@@ -46,12 +46,12 @@ exports.AppModule = AppModule = __decorate([
                 inject: [config_1.ConfigService],
                 useFactory: (config) => {
                     return {
-                        type: 'mysql',
-                        host: 'localhost',
-                        port: 3306,
-                        username: 'mohammed',
-                        password: 'mohammed',
-                        database: 'parallel_programming',
+                        type: config.get('DB_TYPE'),
+                        host: config.get('DB_HOST'),
+                        port: config.get('DB_PORT'),
+                        username: config.get('DB_USERNAME'),
+                        password: config.get('DB_PASSWORD'),
+                        database: config.get('DB_DATABASE'),
                         entities: [product_entity_1.Product, user_entity_1.User, comment_entity_1.Comment, company_entity_1.Company, notification_entity_1.Notification, favorite_entity_1.Favorite, cart_entity_1.Cart, confirm_entity_1.Confirm, user_product_entity_1.UserProduct],
                         synchronize: true,
                         logging: true

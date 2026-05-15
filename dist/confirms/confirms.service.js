@@ -22,15 +22,19 @@ const order_status_1 = require("./utils/order-status");
 let ConfirmsService = class ConfirmsService {
     confirmRepository;
     cartsService;
-    constructor(confirmRepository, cartsService) {
+    dataSource;
+    constructor(confirmRepository, cartsService, dataSource) {
         this.confirmRepository = confirmRepository;
         this.cartsService = cartsService;
+        this.dataSource = dataSource;
     }
-    async create(createconfirmDto, user_id) {
-        const confirm = this.confirmRepository.create(createconfirmDto);
-        const savedConfirm = await this.confirmRepository.save(confirm);
-        await this.cartsService.update({ confirmId: savedConfirm.id }, user_id);
-        return savedConfirm;
+    create(createconfirmDto, user_id) {
+        return this.dataSource.transaction(async (entityManager) => {
+            const confirm = this.confirmRepository.create(createconfirmDto);
+            const savedConfirm = await this.confirmRepository.save(confirm);
+            await this.cartsService.update({ confirmId: savedConfirm.id }, user_id, entityManager);
+            return savedConfirm;
+        });
     }
     findAll() {
         return this.confirmRepository.find();
@@ -38,27 +42,33 @@ let ConfirmsService = class ConfirmsService {
     findOne(id) {
         return this.confirmRepository.findOne({ where: { id } });
     }
-    findOneForUser(id, user_id) {
-        return this.confirmRepository.findOne({ where: { id, cart: { user: { id: user_id } } }, relations: { cart: { user: true } } });
+    findOneForUser(id, user_id, entityManager = null) {
+        const where = { where: { id, cart: { user: { id: user_id } } }, relations: { cart: { user: true } } };
+        if (entityManager) {
+            entityManager.findOne(confirm_entity_1.Confirm, where);
+        }
+        return this.confirmRepository.findOne(where);
     }
-    async update(id, updateconfirmDto) {
+    update(id, updateconfirmDto) {
         return this.confirmRepository.update(id, updateconfirmDto);
     }
-    async remove(id, user_id) {
-        const confirm = await this.findOneForUser(id, user_id);
-        if (!confirm) {
-            throw new common_1.NotFoundException();
-        }
-        if (confirm.status != order_status_1.OrderStatus.PENDING) {
-            throw new common_1.UnauthorizedException();
-        }
-        return this.confirmRepository.delete({ id });
+    remove(id, user_id) {
+        return this.dataSource.transaction(async (entityManager) => {
+            const confirm = await this.findOneForUser(id, user_id, entityManager);
+            if (!confirm) {
+                throw new common_1.NotFoundException();
+            }
+            if (confirm.status != order_status_1.OrderStatus.PENDING) {
+                throw new common_1.UnauthorizedException();
+            }
+            return entityManager.delete(confirm_entity_1.Confirm, { id });
+        });
     }
 };
 exports.ConfirmsService = ConfirmsService;
 exports.ConfirmsService = ConfirmsService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(confirm_entity_1.Confirm)),
-    __metadata("design:paramtypes", [typeorm_2.Repository, carts_service_1.CartsService])
+    __metadata("design:paramtypes", [typeorm_2.Repository, carts_service_1.CartsService, typeorm_2.DataSource])
 ], ConfirmsService);
 //# sourceMappingURL=confirms.service.js.map

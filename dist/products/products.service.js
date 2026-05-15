@@ -27,41 +27,63 @@ let ProductsService = class ProductsService {
         this.dataSource = dataSource;
         this.companiesService = companiesService;
     }
-    async create(createProductDto, user_id) {
-        const company = await this.companiesService.findOneByUser(user_id);
-        if (!company) {
-            throw new common_1.UnauthorizedException();
-        }
-        const product = this.productRepository.create({ ...createProductDto, company: { id: company.id } });
-        return this.productRepository.save(product);
+    create(createProductDto, user_id) {
+        return this.dataSource.transaction(async (entityManager) => {
+            const company = await this.companiesService.findOneByUser(user_id, entityManager);
+            if (!company) {
+                throw new common_1.UnauthorizedException();
+            }
+            const product = entityManager.create(product_entity_1.Product, { ...createProductDto, company: { id: company.id }, });
+            return entityManager.save(product_entity_1.Product, product);
+        });
     }
     findAll() {
         return this.productRepository.find();
     }
-    findOne(id) {
-        return this.productRepository.findOne({ where: { id, deletedAt: (0, typeorm_2.IsNull)() } });
+    findOne(id, entityManager = null) {
+        const where = { where: { id, deletedAt: (0, typeorm_2.IsNull)() } };
+        if (entityManager) {
+            entityManager.findOne(product_entity_1.Product, where);
+        }
+        return this.productRepository.findOne(where);
     }
-    findOneForBuy(id, updateProductCountDto) {
-        return this.productRepository.findOne({ where: { id, count: (0, typeorm_2.MoreThanOrEqual)(updateProductCountDto.count), deletedAt: (0, typeorm_2.IsNull)() } });
+    findOneForBuy(id, updateProductCountDto, entityManager = null) {
+        const where = { where: { id, count: (0, typeorm_2.MoreThanOrEqual)(updateProductCountDto.count), deletedAt: (0, typeorm_2.IsNull)() } };
+        if (entityManager) {
+            entityManager.findOne(product_entity_1.Product, where);
+        }
+        return this.productRepository.findOne(where);
     }
-    async updateForBuy(id, updateProductCountDto, user_id) {
-        const product = await this.findOneForBuy(id, updateProductCountDto);
+    async updateForBuy(id, updateProductCountDto, entityManager) {
+        const product = await this.findOneForBuy(id, updateProductCountDto, entityManager);
         if (!product) {
             throw new common_1.NotFoundException();
         }
-        await this.productRepository.update(id, { count: product.count - updateProductCountDto.count });
+        await entityManager.update(product_entity_1.Product, id, { count: product.count - updateProductCountDto.count });
         return product;
     }
-    async update(id, updateProductDto, user_id) {
-        const product = await this.productRepository.findOne({ where: { id } });
-        return this.productRepository.update(id, updateProductDto);
-    }
-    async remove(id, user_id) {
-        const company = await this.companiesService.findOneByUser(user_id);
-        if (!company) {
-            throw new common_1.UnauthorizedException();
+    async updateForReturn(id, updateProductCountDto, entityManager) {
+        const product = await this.findOne(id, entityManager);
+        if (!product) {
+            throw new common_1.NotFoundException();
         }
-        return this.productRepository.update(id, { deletedAt: Date.now() });
+        await entityManager.update(product_entity_1.Product, id, { count: product.count + updateProductCountDto.count });
+        return product;
+    }
+    update(id, updateProductDto, user_id) {
+        return this.dataSource.transaction(async (entityManager) => {
+            const product = await this.findOne(id, entityManager);
+            return entityManager.update(product_entity_1.Product, id, updateProductDto);
+        });
+    }
+    remove(id, user_id) {
+        return this.dataSource.transaction(async (entityManager) => {
+            const company = await this.companiesService.findOneByUser(user_id, entityManager);
+            if (!company) {
+                throw new common_1.UnauthorizedException();
+            }
+            return entityManager.update(product_entity_1.Product, id, { deletedAt: Date.now() });
+        });
     }
 };
 exports.ProductsService = ProductsService;

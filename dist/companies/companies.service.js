@@ -32,8 +32,12 @@ let CompaniesService = class CompaniesService {
     findOne(id) {
         return this.companyRepository.findOne({ where: { id } });
     }
-    findOneByUser(user_id) {
-        return this.companyRepository.findOne({ where: { user: { id: user_id } } });
+    findOneByUser(user_id, entityManager = null) {
+        const where = { where: { user: { id: user_id } } };
+        if (entityManager) {
+            return entityManager.findOne(company_entity_1.Company, where);
+        }
+        return this.companyRepository.findOne(where);
     }
     update(id, updateCompanyDto) {
         return this.companyRepository.update(id, updateCompanyDto);

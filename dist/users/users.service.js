@@ -17,6 +17,7 @@ const common_1 = require("@nestjs/common");
 const user_entity_1 = require("./entities/user.entity");
 const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
+const user_type_1 = require("./utils/user-type");
 let UsersService = class UsersService {
     userRepository;
     constructor(userRepository) {
@@ -39,6 +40,7 @@ let UsersService = class UsersService {
         return this.userRepository.update(id, updateUserDto);
     }
     remove(id) {
+        return this.userRepository.update(id, { userType: user_type_1.UserType.BANNED });
     }
 };
 exports.UsersService = UsersService;

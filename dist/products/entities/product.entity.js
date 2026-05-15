@@ -60,7 +60,7 @@ __decorate([
     __metadata("design:type", Array)
 ], Product.prototype, "carts", void 0);
 __decorate([
-    (0, typeorm_1.Column)(),
+    (0, typeorm_1.Column)({ nullable: true }),
     __metadata("design:type", Date)
 ], Product.prototype, "deletedAt", void 0);
 exports.Product = Product = __decorate([

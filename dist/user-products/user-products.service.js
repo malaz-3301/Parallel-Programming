@@ -27,39 +27,62 @@ let UserProductsService = class UserProductsService {
         this.dataSource = dataSource;
         this.productsService = productsService;
     }
-    async create(createuserProductDto, user_id) {
-        const product = await this.productsService.updateForBuy(createuserProductDto.productId, { count: createuserProductDto.count }, user_id);
-        if (!product) {
-            throw new common_1.NotFoundException();
-        }
-        const userProduct = this.userProductRepository.create({ ...createuserProductDto, price: createuserProductDto.count * product.price });
-        return this.userProductRepository.save(userProduct);
+    create(createuserProductDto) {
+        return this.dataSource.transaction(async (entityManager) => {
+            const product = await this.productsService.updateForBuy(createuserProductDto.productId, { count: createuserProductDto.count }, entityManager);
+            if (!product) {
+                throw new common_1.NotFoundException();
+            }
+            const userProduct = entityManager.create(user_product_entity_1.UserProduct, { ...createuserProductDto, price: createuserProductDto.count * product.price, product: { id: createuserProductDto.productId }, cart: { id: createuserProductDto.cartId } });
+            return entityManager.save(userProduct);
+        });
     }
     findAll() {
         return this.userProductRepository.find();
     }
-    findOne(productId, cartId) {
-        return this.userProductRepository.findOne({ where: { product: { id: productId }, cart: { id: cartId } } });
+    findOne(productId, cartId, entityManager = null) {
+        const where = { where: { product: { id: productId }, cart: { id: cartId } }, loadRelationIds: true };
+        if (entityManager) {
+            entityManager.findOne(user_product_entity_1.UserProduct, where);
+        }
+        return this.userProductRepository.findOne(where);
     }
-    async update(createUserProductDto) {
-        try {
-            const userProductDto = await this.findOne(createUserProductDto.productId, createUserProductDto.cartId);
-            const product = await this.productsService.findOne(userProductDto.product.id);
-            return this.userProductRepository.update(userProductDto.id, { ...createUserProductDto, price: product.price * createUserProductDto.count });
-        }
-        catch (e) {
-            throw new common_1.NotFoundException();
-        }
+    update(createUserProductDto) {
+        return this.dataSource.transaction(async (entityManager) => {
+            try {
+                const userProduct = await this.findOne(createUserProductDto.productId, createUserProductDto.cartId, entityManager);
+                const product = await this.productsService.findOne(userProduct.product.id, entityManager);
+                return entityManager.update(user_product_entity_1.UserProduct, userProduct.id, { ...createUserProductDto, price: product.price * createUserProductDto.count });
+            }
+            catch (e) {
+                throw new common_1.NotFoundException();
+            }
+        });
     }
-    async remove(productId, cartId, user_id) {
-        try {
-            const userProduct = await this.findOne(productId, cartId);
-            const product = await this.productsService.update(productId, { count: userProduct.count }, user_id);
-        }
-        catch (e) {
-            throw new common_1.NotFoundException();
-        }
-        return this.userProductRepository.delete({ product: { id: productId }, cart: { id: cartId } });
+    updateForUser(createUserProductDto) {
+        return this.dataSource.transaction(async (entityManager) => {
+            try {
+                const userProduct = await this.findOne(createUserProductDto.productId, createUserProductDto.cartId, entityManager);
+                const product = await this.productsService.findOne(userProduct.product.id, entityManager);
+                const newCount = (createUserProductDto.count + userProduct.count);
+                return entityManager.update(user_product_entity_1.UserProduct, userProduct.id, { price: product.price * newCount, count: newCount });
+            }
+            catch (e) {
+                throw new common_1.NotFoundException();
+            }
+        });
+    }
+    remove(productId, cartId) {
+        return this.dataSource.transaction(async (entityManager) => {
+            try {
+                const userProduct = await this.findOne(productId, cartId, entityManager);
+                const product = await this.productsService.updateForReturn(productId, { count: userProduct.count }, entityManager);
+            }
+            catch (e) {
+                throw new common_1.NotFoundException();
+            }
+            return entityManager.delete(user_product_entity_1.UserProduct, { product: { id: productId }, cart: { id: cartId } });
+        });
     }
 };
 exports.UserProductsService = UserProductsService;

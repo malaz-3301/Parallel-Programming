@@ -13,6 +13,7 @@ exports.RolesGuard = void 0;
 const common_1 = require("@nestjs/common");
 const core_1 = require("@nestjs/core");
 const roles_decorator_1 = require("./roles.decorator");
+const user_type_1 = require("../../users/utils/user-type");
 let RolesGuard = class RolesGuard {
     reflector;
     constructor(reflector) {
@@ -28,13 +29,11 @@ let RolesGuard = class RolesGuard {
         return this.matchRoles(roles, user.userType);
     }
     matchRoles(roles, userRole) {
-        console.log(roles, userRole);
-        switch (roles) {
-            case 'admin':
-                return 'admin' in userRole;
-            case 'user':
-                return userRole.length;
-            default: return false;
+        if (userRole == user_type_1.UserType.BANNED) {
+            return false;
+        }
+        else {
+            return roles.some(role => userRole.includes(role));
         }
     }
 };

@@ -15,36 +15,51 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.CartsController = void 0;
 const common_1 = require("@nestjs/common");
 const carts_service_1 = require("./carts.service");
-const update_cart_dto_1 = require("./dto/update-cart.dto");
+const add_to_cart_1 = require("./dto/add-to-cart");
+const remove_from_cart_1 = require("./dto/remove-from-cart");
 let CartsController = class CartsController {
     cartsService;
     constructor(cartsService) {
         this.cartsService = cartsService;
     }
-    create(req) {
-        return this.cartsService.create(req.user.id);
+    addToCart(addToCart, req) {
+        return this.cartsService.addToCart(addToCart, req.user.id);
+    }
+    removeFromCart(removeFromCart, req) {
+        return this.cartsService.removeFromCart(removeFromCart, req.user.id);
+    }
+    updateCountForCartProduct(addToCart, req) {
+        return this.cartsService.updateCountForCartProduct(addToCart, req.user.id);
     }
     findAll(req) {
         return this.cartsService.findAll();
     }
-    findOne(req) {
-        return this.cartsService.findOne(req.user.id);
-    }
-    update(updateCartDto, req) {
-        return this.cartsService.update(updateCartDto, req.user.id);
-    }
-    remove(req) {
-        return this.cartsService.remove(req.user.id);
-    }
 };
 exports.CartsController = CartsController;
 __decorate([
-    (0, common_1.Post)(),
-    __param(0, (0, common_1.Request)()),
+    (0, common_1.Post)('add'),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", [add_to_cart_1.AddToCart, Object]),
     __metadata("design:returntype", void 0)
-], CartsController.prototype, "create", null);
+], CartsController.prototype, "addToCart", null);
+__decorate([
+    (0, common_1.Post)('remove'),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [remove_from_cart_1.RemoveFromCart, Object]),
+    __metadata("design:returntype", void 0)
+], CartsController.prototype, "removeFromCart", null);
+__decorate([
+    (0, common_1.Patch)('update'),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [add_to_cart_1.AddToCart, Object]),
+    __metadata("design:returntype", void 0)
+], CartsController.prototype, "updateCountForCartProduct", null);
 __decorate([
     (0, common_1.Get)('all_carts'),
     __param(0, (0, common_1.Request)()),
@@ -52,28 +67,6 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", void 0)
 ], CartsController.prototype, "findAll", null);
-__decorate([
-    (0, common_1.Get)(),
-    __param(0, (0, common_1.Request)()),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
-    __metadata("design:returntype", void 0)
-], CartsController.prototype, "findOne", null);
-__decorate([
-    (0, common_1.Patch)(),
-    __param(0, (0, common_1.Body)()),
-    __param(1, (0, common_1.Request)()),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [update_cart_dto_1.UpdateCartDto, Object]),
-    __metadata("design:returntype", void 0)
-], CartsController.prototype, "update", null);
-__decorate([
-    (0, common_1.Delete)(),
-    __param(0, (0, common_1.Request)()),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
-    __metadata("design:returntype", void 0)
-], CartsController.prototype, "remove", null);
 exports.CartsController = CartsController = __decorate([
     (0, common_1.Controller)('carts'),
     __metadata("design:paramtypes", [carts_service_1.CartsService])

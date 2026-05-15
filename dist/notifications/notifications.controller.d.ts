@@ -8,8 +8,16 @@ export declare class NotificationsController {
     create(createnotificationDto: CreateNotificationDto, req: {
         user: User;
     }): Promise<import("./entities/notification.entity").Notification>;
-    findAll(user: User): Promise<import("./entities/notification.entity").Notification[]>;
-    findOne(id: string, user: User): Promise<import("./entities/notification.entity").Notification | null>;
-    update(id: string, updatenotificationDto: UpdateNotificationDto, user: User): Promise<import("typeorm").UpdateResult>;
-    remove(id: string, user: User): Promise<import("typeorm").DeleteResult>;
+    findAll(req: {
+        user: User;
+    }): Promise<import("./entities/notification.entity").Notification[]>;
+    findOne(id: string, req: {
+        user: User;
+    }): Promise<import("./entities/notification.entity").Notification | null>;
+    update(id: string, updatenotificationDto: UpdateNotificationDto, req: {
+        user: User;
+    }): Promise<import("typeorm").UpdateResult>;
+    remove(id: string, req: {
+        user: User;
+    }): Promise<import("typeorm").DeleteResult>;
 }

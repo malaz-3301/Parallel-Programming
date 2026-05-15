@@ -1,4 +1,6 @@
 export declare enum UserType {
     USER = "user",
-    ADMIN = "admin"
+    ADMIN = "admin",
+    BANNED = "banned",
+    SUPERADMIN = "superamin"
 }

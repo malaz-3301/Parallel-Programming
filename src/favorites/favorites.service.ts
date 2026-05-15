@@ -7,7 +7,7 @@ import { DataSource, FindOptionsWhere, Repository, Transaction } from 'typeorm';
 
 @Injectable()
 export class FavoritesService {
-  constructor(@InjectRepository(Favorite) private favoriteRepository: Repository<Favorite>, private dataSource: DataSource) { }
+  constructor(@InjectRepository(Favorite) private favoriteRepository: Repository<Favorite>,) { }
   create(createfavoriteDto: CreateFavoriteDto, user_id) {
     const favorite = this.favoriteRepository.create({ ...createfavoriteDto, user: { id: user_id } });
     return this.favoriteRepository.save(favorite)

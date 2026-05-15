@@ -23,6 +23,6 @@ export class Product {
     comments!: Comment[]
     @OneToMany(() => UserProduct, (userProduct) => userProduct.product)
     carts!: UserProduct[];
-    @Column()
+    @Column({ nullable: true })
     deletedAt!: Date
 }

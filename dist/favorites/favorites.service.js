@@ -19,10 +19,8 @@ const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 let FavoritesService = class FavoritesService {
     favoriteRepository;
-    dataSource;
-    constructor(favoriteRepository, dataSource) {
+    constructor(favoriteRepository) {
         this.favoriteRepository = favoriteRepository;
-        this.dataSource = dataSource;
     }
     create(createfavoriteDto, user_id) {
         const favorite = this.favoriteRepository.create({ ...createfavoriteDto, user: { id: user_id } });
@@ -42,6 +40,6 @@ exports.FavoritesService = FavoritesService;
 exports.FavoritesService = FavoritesService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(favorite_entity_1.Favorite)),
-    __metadata("design:paramtypes", [typeorm_2.Repository, typeorm_2.DataSource])
+    __metadata("design:paramtypes", [typeorm_2.Repository])
 ], FavoritesService);
 //# sourceMappingURL=favorites.service.js.map

@@ -19,8 +19,10 @@ const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 let NotificationsService = class NotificationsService {
     notificationRepository;
-    constructor(notificationRepository) {
+    dataSource;
+    constructor(notificationRepository, dataSource) {
         this.notificationRepository = notificationRepository;
+        this.dataSource = dataSource;
     }
     create(createnotificationDto) {
         const notification = this.notificationRepository.create(createnotificationDto);
@@ -29,15 +31,21 @@ let NotificationsService = class NotificationsService {
     findAll() {
         return this.notificationRepository.find();
     }
-    findOne(id, user_id) {
-        return this.notificationRepository.findOne({ where: { user: { id: user_id }, id } });
-    }
-    async update(id, updatenotificationDto, user_id) {
-        const notification = await this.findOne(id, user_id);
-        if (notification && !notification.readAt) {
-            return this.notificationRepository.update(id, updatenotificationDto);
+    findOne(id, user_id, entityManager = null) {
+        const where = { where: { user: { id: user_id }, id } };
+        if (entityManager) {
+            entityManager.findOne(notification_entity_1.Notification, where);
         }
-        throw new common_1.UnauthorizedException();
+        return this.notificationRepository.findOne(where);
+    }
+    update(id, updatenotificationDto, user_id) {
+        return this.dataSource.transaction(async (entityManager) => {
+            const notification = await this.findOne(id, user_id, entityManager);
+            if (notification && !notification.readAt) {
+                return entityManager.update(notification_entity_1.Notification, id, updatenotificationDto);
+            }
+            throw new common_1.UnauthorizedException();
+        });
     }
     remove(id, user_id) {
         return this.notificationRepository.delete({ id, user: { id: user_id } });
@@ -47,6 +55,6 @@ exports.NotificationsService = NotificationsService;
 exports.NotificationsService = NotificationsService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(notification_entity_1.Notification)),
-    __metadata("design:paramtypes", [typeorm_2.Repository])
+    __metadata("design:paramtypes", [typeorm_2.Repository, typeorm_2.DataSource])
 ], NotificationsService);
 //# sourceMappingURL=notifications.service.js.map

@@ -14,6 +14,7 @@ const common_1 = require("@nestjs/common");
 const core_1 = require("@nestjs/core");
 const passport_1 = require("@nestjs/passport");
 const public_module_1 = require("../../public.module");
+const user_type_1 = require("../../users/utils/user-type");
 let JwtAuthGuard = class JwtAuthGuard extends (0, passport_1.AuthGuard)('jwt') {
     reflector;
     constructor(reflector) {
@@ -29,6 +30,12 @@ let JwtAuthGuard = class JwtAuthGuard extends (0, passport_1.AuthGuard)('jwt') {
             return true;
         }
         return super.canActivate(context);
+    }
+    handleRequest(err, user, info, context, status) {
+        if (user.userType == user_type_1.UserType.BANNED) {
+            throw new common_1.UnauthorizedException();
+        }
+        return user;
     }
 };
 exports.JwtAuthGuard = JwtAuthGuard;

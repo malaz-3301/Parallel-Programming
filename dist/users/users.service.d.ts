@@ -10,5 +10,5 @@ export declare class UsersService {
     findOne(id: number): Promise<User | null>;
     findOneByPhone(phone: string): Promise<User | null>;
     update(id: number, updateUserDto: UpdateUserDto): Promise<import("typeorm").UpdateResult>;
-    remove(id: number): void;
+    remove(id: number): Promise<import("typeorm").UpdateResult>;
 }

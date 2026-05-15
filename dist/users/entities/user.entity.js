@@ -40,7 +40,7 @@ __decorate([
     __metadata("design:type", String)
 ], User.prototype, "password", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ update: false }),
+    (0, typeorm_1.Column)({ update: false, unique: true }),
     __metadata("design:type", String)
 ], User.prototype, "phone", void 0);
 __decorate([

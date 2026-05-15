@@ -1,22 +1,20 @@
 import { CartsService } from './carts.service';
-import { UpdateCartDto } from './dto/update-cart.dto';
 import { User } from 'src/users/entities/user.entity';
+import { AddToCart } from './dto/add-to-cart';
+import { RemoveFromCart } from './dto/remove-from-cart';
 export declare class CartsController {
     private readonly cartsService;
     constructor(cartsService: CartsService);
-    create(req: {
+    addToCart(addToCart: AddToCart, req: {
         user: User;
-    }): Promise<import("./entities/cart.entity").Cart>;
+    }): Promise<import("../user-products/entities/user-product.entity").UserProduct | import("typeorm").UpdateResult>;
+    removeFromCart(removeFromCart: RemoveFromCart, req: {
+        user: User;
+    }): Promise<import("typeorm").DeleteResult>;
+    updateCountForCartProduct(addToCart: AddToCart, req: {
+        user: User;
+    }): Promise<import("typeorm").UpdateResult>;
     findAll(req: {
         user: User;
     }): Promise<import("./entities/cart.entity").Cart[]>;
-    findOne(req: {
-        user: User;
-    }): Promise<import("./entities/cart.entity").Cart | null>;
-    update(updateCartDto: UpdateCartDto, req: {
-        user: User;
-    }): Promise<import("typeorm").UpdateResult>;
-    remove(req: {
-        user: User;
-    }): Promise<import("typeorm").DeleteResult>;
 }

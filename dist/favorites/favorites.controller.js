@@ -16,23 +16,22 @@ exports.FavoritesController = void 0;
 const common_1 = require("@nestjs/common");
 const favorites_service_1 = require("./favorites.service");
 const create_favorite_dto_1 = require("./dto/create-favorite.dto");
-const user_entity_1 = require("../users/entities/user.entity");
 let FavoritesController = class FavoritesController {
     favoritesService;
     constructor(favoritesService) {
         this.favoritesService = favoritesService;
     }
-    create(createfavoriteDto, user) {
-        return this.favoritesService.create(createfavoriteDto, user.id);
+    create(createfavoriteDto, req) {
+        return this.favoritesService.create(createfavoriteDto, req.user.id);
     }
-    findAll(user) {
+    findAll(req) {
         return this.favoritesService.findAll();
     }
-    findOne(id, user) {
-        return this.favoritesService.findOne(+id, user.id);
+    findOne(id, req) {
+        return this.favoritesService.findOne(+id, req.user.id);
     }
-    remove(id, user) {
-        return this.favoritesService.remove(+id, user.id);
+    remove(id, req) {
+        return this.favoritesService.remove(+id, req.user.id);
     }
 };
 exports.FavoritesController = FavoritesController;
@@ -41,14 +40,14 @@ __decorate([
     __param(0, (0, common_1.Body)()),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [create_favorite_dto_1.CreateFavoriteDto, user_entity_1.User]),
+    __metadata("design:paramtypes", [create_favorite_dto_1.CreateFavoriteDto, Object]),
     __metadata("design:returntype", void 0)
 ], FavoritesController.prototype, "create", null);
 __decorate([
     (0, common_1.Get)(),
     __param(0, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [user_entity_1.User]),
+    __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", void 0)
 ], FavoritesController.prototype, "findAll", null);
 __decorate([
@@ -56,7 +55,7 @@ __decorate([
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, user_entity_1.User]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", void 0)
 ], FavoritesController.prototype, "findOne", null);
 __decorate([
@@ -64,7 +63,7 @@ __decorate([
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, user_entity_1.User]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", void 0)
 ], FavoritesController.prototype, "remove", null);
 exports.FavoritesController = FavoritesController = __decorate([

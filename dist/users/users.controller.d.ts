@@ -8,5 +8,5 @@ export declare class UsersController {
     findAll(): Promise<import("./entities/user.entity").User[]>;
     findOne(id: string): Promise<import("./entities/user.entity").User | null>;
     update(id: string, updateUserDto: UpdateUserDto): Promise<import("typeorm").UpdateResult>;
-    remove(id: string): void;
+    remove(id: string): Promise<import("typeorm").UpdateResult>;
 }
