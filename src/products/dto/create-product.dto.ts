@@ -14,7 +14,4 @@ export class CreateProductDto {
     @IsString()
     @MaxLength(1000)
     details!: string
-    @IsString()
-    @MaxLength(30)
-    name!: string
 }

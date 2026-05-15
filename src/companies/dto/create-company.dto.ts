@@ -1,4 +1,4 @@
-import { IsEmail, IsLatLong, IsMobilePhone, IsString, MaxLength } from "class-validator";
+import { IsEmail, IsInt, IsLatLong, IsMobilePhone, IsPositive, IsString, MaxLength } from "class-validator";
 
 export class CreateCompanyDto {
     @IsString()
@@ -10,7 +10,7 @@ export class CreateCompanyDto {
     @IsMobilePhone('ar-SY')
     @MaxLength(10)
     phone!: string;
-    @IsString()
-    @MaxLength(100)
+    @IsInt()
+    @IsPositive()
     userId!: string
 }

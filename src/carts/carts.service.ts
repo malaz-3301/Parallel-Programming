@@ -35,28 +35,35 @@ export class CartsService {
   remove(user_id: number, entityManager: EntityManager) {
     return entityManager.delete(Cart, { user: { id: user_id } })
   }
+  async removeAllFromCart(user_id: number, entityManager: EntityManager) {
+    const cart = await this.findOne(user_id, entityManager)
+    if(!cart){
+      throw new NotFoundException();
+    }
+    return this.userProdutsService.removeAll(user_id, cart.id, entityManager)
+  }
 
   addToCart(addToCart: AddToCart, user_id: number) {
     return this.dataSource.transaction(async (entityManager) => {
       const cart = await this.findOne(user_id, entityManager)
       if (!cart) {
         const cart = await this.create(user_id, entityManager)
-        return this.userProdutsService.create({ ...addToCart, cartId: cart.id },)
+        return this.userProdutsService.create({ ...addToCart, cartId: cart.id },entityManager)
       }
       if (cart.userProducts.some(userProduct => userProduct.product.id == addToCart.productId))
-        return this.userProdutsService.updateForUser({ ...addToCart, cartId: cart.id },)
-      return this.userProdutsService.create({ ...addToCart, cartId: cart.id },)
+        return this.userProdutsService.updateForUser({ ...addToCart, cartId: cart.id },entityManager)
+      return this.userProdutsService.create({ ...addToCart, cartId: cart.id },entityManager)
     })
   }
   updateCountForCartProduct(addToCart: AddToCart, user_id: number) {
     return this.dataSource.transaction(async (entityManager) => {
-        const cart = await this.findOne(user_id, entityManager)
-        if (!cart) {
-          throw new NotFoundException();
-        }
-        if (cart.userProducts.some(userProduct => userProduct.product.id == addToCart.productId))
-          return this.userProdutsService.update({ ...addToCart, cartId: cart.id },)
+      const cart = await this.findOne(user_id, entityManager)
+      if (!cart) {
         throw new NotFoundException();
+      }
+      if (cart.userProducts.some(userProduct => userProduct.product.id == addToCart.productId))
+        return this.userProdutsService.update({ ...addToCart, cartId: cart.id },)
+      throw new NotFoundException();
     })
   }
 

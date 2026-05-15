@@ -4,6 +4,7 @@ import { CreateConfirmDto } from './dto/create-confirm.dto';
 import { UpdateConfirmDto } from './dto/update-confirm.dto';
 import { Request as Req } from 'express';
 import { User } from 'src/users/entities/user.entity';
+import { Roles } from 'src/auth/utils/roles.decorator';
 
 @Controller('confirms')
 export class ConfirmsController {
@@ -14,16 +15,19 @@ export class ConfirmsController {
     return this.confirmsService.create(createconfirmDto, req.user.id);
   }
 
+  @Roles(['admin'])
   @Get()
   findAll(@Request() req: { user: User }) {
     return this.confirmsService.findAll();
   }
 
+  @Roles(['admin'])
   @Get(':id')
   findOne(@Param('id') id: string, @Request() req: { user: User }) {
     return this.confirmsService.findOne(+id);
   }
 
+  @Roles(['admin'])
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateconfirmDto: UpdateConfirmDto, @Request() req: { user: User }) {
     return this.confirmsService.update(+id, updateconfirmDto);

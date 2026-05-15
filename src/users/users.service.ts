@@ -25,6 +25,9 @@ export class UsersService {
   findOneByPhone(phone: string) {
     return this.userRepository.findOne({ where: { phone } });
   }
+  findOneById(user_id: number) {
+    return this.userRepository.findOne({ where: { id: user_id } });
+  }
   update(id: number, updateUserDto: UpdateUserDto) {
     return this.userRepository.update(id, updateUserDto);
   }

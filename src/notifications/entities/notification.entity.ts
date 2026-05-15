@@ -8,7 +8,7 @@ export class Notification {
     created_at!: Date;
     @Column()
     data!: string;
-    @Column()
+    @Column({nullable : true})
     readAt!: Date ;
     @ManyToOne(() => User)
     @JoinColumn()

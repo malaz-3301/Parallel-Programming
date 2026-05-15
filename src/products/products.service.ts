@@ -22,8 +22,11 @@ export class ProductsService {
     })
   }
 
-  findAll() {
+  findAllWithDeleted() {
     return this.productRepository.find();
+  }
+  findAll() {
+    return this.productRepository.find({ where: { deletedAt: IsNull() } });
   }
 
   findOne(id: number, entityManager: EntityManager | null = null) {
@@ -40,29 +43,32 @@ export class ProductsService {
     }
     return this.productRepository.findOne(where)
   }
-  async updateForBuy(id: number, updateProductCountDto: UpdateProductCountDto, entityManager: EntityManager ) {
-      const product = await this.findOneForBuy(id, updateProductCountDto, entityManager);
-      if (!product) {
-        throw new NotFoundException();
-      }
-      await entityManager.update(Product, id, { count: product.count - updateProductCountDto.count });
-      return product
+  async updateForBuy(id: number, updateProductCountDto: UpdateProductCountDto, entityManager: EntityManager) {
+    const product = await this.findOneForBuy(id, updateProductCountDto, entityManager);
+    if (!product) {
+      throw new NotFoundException();
+    }
+    await entityManager.update(Product, id, { count: product.count - updateProductCountDto.count });
+    return product
   }
-  async updateForReturn(id: number, updateProductCountDto: UpdateProductCountDto, entityManager: EntityManager ) {
+  async updateForReturn(id: number, updateProductCountDto: UpdateProductCountDto, entityManager: EntityManager) {
 
-      const product = await this.findOne(id, entityManager);
-      if (!product) {
-        throw new NotFoundException();
-      }
-      await entityManager.update(Product, id, { count: product.count + updateProductCountDto.count });
-      return product
+    const product = await this.findOne(id, entityManager);
+    if (!product) {
+      throw new NotFoundException();
+    }
+    await entityManager.update(Product, id, { count: product.count + updateProductCountDto.count });
+    return product
   }
 
 
   update(id: number, updateProductDto: UpdateProductDto, user_id: number) {
     return this.dataSource.transaction(async (entityManager) => {
-      const product = await this.findOne(id, entityManager);
-      return entityManager.update(Product, id, updateProductDto);
+      const company = await this.companiesService.findOneByUser(user_id, entityManager)
+      if (!company) {
+        throw new UnauthorizedException();
+      }
+      return entityManager.update(Product, { id, company: { id: company.id } }, updateProductDto);
     })
   }
 

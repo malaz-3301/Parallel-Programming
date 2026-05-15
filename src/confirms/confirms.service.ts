@@ -35,8 +35,13 @@ export class ConfirmsService {
     return this.confirmRepository.findOne(where)
   }
 
-  update(id: number, updateconfirmDto: UpdateConfirmDto) {
-    return this.confirmRepository.update(id, updateconfirmDto)
+  update(id: number, updateconfirmDto: UpdateConfirmDto, user_id: number) {
+    return this.dataSource.transaction(async (entityManager) => {
+      if (updateconfirmDto.status == OrderStatus.CANCELLED) {
+        await this.cartsService.remove(user_id, entityManager)
+      }
+      return entityManager.update(Confirm, id, updateconfirmDto)
+    })
   }
 
   remove(id: number, user_id: number) {

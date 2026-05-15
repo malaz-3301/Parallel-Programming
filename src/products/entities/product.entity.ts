@@ -16,7 +16,7 @@ export class Product {
     photo!: string
     @Column()
     details!: string
-    @OneToOne(() => Company)
+    @OneToOne(() => Company, )
     @JoinColumn()
     company!: Company;
     @OneToMany(() => Comment, (comment) => comment.product)

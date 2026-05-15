@@ -9,7 +9,7 @@ import { DataSource, FindOptionsWhere, Repository, Transaction } from 'typeorm';
 export class FavoritesService {
   constructor(@InjectRepository(Favorite) private favoriteRepository: Repository<Favorite>,) { }
   create(createfavoriteDto: CreateFavoriteDto, user_id) {
-    const favorite = this.favoriteRepository.create({ ...createfavoriteDto, user: { id: user_id } });
+    const favorite = this.favoriteRepository.create({ product: { id: createfavoriteDto.productId }, user: { id: user_id } });
     return this.favoriteRepository.save(favorite)
   }
 
@@ -18,7 +18,7 @@ export class FavoritesService {
   }
 
   findOne(id: number, user_id: number) {
-    return this.favoriteRepository.findOne({ where: { id, user: { id: user_id } } })
+    return this.favoriteRepository.findOne({ where: { id, user: { id: user_id } }, relations: { product: true } })
   }
 
   // async update(id: number, updatefavoriteDto: UpdateFavoriteDto, user_id: number) {
