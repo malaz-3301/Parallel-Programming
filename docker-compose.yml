@@ -1,0 +1,97 @@
+services:
+  #Port1:Port2
+  #Port1: in my local device
+  #Port2 : in project
+  proxy:
+    image: nginx
+    ports:
+      - "3000:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - app1
+      - app2
+
+  app1:
+    build: .
+    working_dir: /usr/src/app
+    volumes:
+      - ./:/usr/src/app               # ربط مجلد الكود من جهازك  حطه محل ملف ال docker file
+      - /usr/src/app/node_modules     # عزل مجلد node_modules داخل الحاوية
+    environment:
+      - DB_HOST=postgres_db
+      - APP_NAME=App 1
+    command: npm run start:dev       # تشغيل في وضع التطوير مع watch
+    ports:
+      - "3001:3000"
+    depends_on:
+      - postgres_db
+
+  app2:
+    build: .
+    working_dir: /usr/src/app
+    volumes:
+      - ./:/usr/src/app
+      - /usr/src/app/node_modules
+    environment:
+      - DB_HOST=postgres_db
+      - APP_NAME=App 2
+    command: npm run start:dev
+    ports:
+      - "3002:3000"
+    depends_on: ## لا تشتغل لتشتغل الحاوية
+      - postgres_db
+
+
+  postgres_db:
+    image: postgis/postgis
+    container_name: postgres_lime
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: lime
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: root321
+      TZ: 'Asia/Damascus'
+    ports:
+      - "5432:5432"
+    # ملاحظة: لا تستخدم هذه الإعدادات في بيئة الإنتاج بدون تأمين البيانات
+
+  rabbitmq:
+    image: rabbitmq   # استخدام أحدث إصدار 4.1.2 مع واجهة الإدارة
+    container_name: rabbitmq
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest     # المتغيرات الصحيحة للوصول
+      - RABBITMQ_DEFAULT_PASS=guest
+    ports:
+      - "5672:5672"     # بروتوكول AMQP
+      - "15672:15672"   # واجهة الإدارة (Management UI)
+    restart: unless-stopped
+
+  redis:
+    image: redis
+    container_name: redis_lime
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command:
+      [
+        "redis-server",
+        "--appendonly", "yes",
+        "--maxmemory", "256mb",
+        "--maxmemory-policy", "allkeys-lru",
+        "--save", "",
+        "--hz", "10"
+      ]
+    volumes:
+      - redis-data:/data
+
+  stripe:
+    image: stripe/stripe-cli
+    container_name: stripe_lime
+    restart: unless-stopped
+    stdin_open: true #keyborad
+    tty: true #terminal
+    command: listen --api-key sk_test_51RNjwHR5TkfUVVEO65yza6Lr0K7tvYJ3RV3FtGBqYE1R5wmpztmqisnmG7j7Uhnurj3799gEcBnA3QPGADkiH1d800qg4ROFob --forward-to http://host.docker.internal:3000/webhook/stripe
+
+volumes:
+  redis-data:
