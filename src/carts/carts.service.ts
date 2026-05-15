@@ -12,10 +12,9 @@ import { UsersService } from 'src/users/users.service';
 @Injectable()
 export class CartsService {
   constructor(@InjectRepository(Cart) private cartRepository: Repository<Cart>, private userProdutsService: UserProductsService, private userService: UsersService) { }
-  async create(user_id: number) {
+  create(user_id: number) {
     const cart = this.cartRepository.create({ user: { id: user_id }, price: 0 });
-    await this.cartRepository.insert(cart)
-    return cart
+    return this.cartRepository.save(cart)
   }
 
   findAll() {
@@ -29,7 +28,7 @@ export class CartsService {
     return this.cartRepository.findOne({ where: { confirm: IsNull(), user: { id: user_id } }, relations: { userProducts: { product: true } } })
   }
 
-  async update(updateCartDto: UpdateCartDto, user_id: number) {
+  update(updateCartDto: UpdateCartDto, user_id: number) {
     return this.cartRepository.update({ user: { id: user_id } }, { confirm: { id: updateCartDto.confirmId } })
   }
 

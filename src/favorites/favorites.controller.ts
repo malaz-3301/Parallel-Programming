@@ -10,27 +10,27 @@ export class FavoritesController {
   constructor(private readonly favoritesService: FavoritesService) { }
 
   @Post()
-  create(@Body() createfavoriteDto: CreateFavoriteDto, @Request() user: User) {
-    return this.favoritesService.create(createfavoriteDto, user.id);
+  create(@Body() createfavoriteDto: CreateFavoriteDto, @Request() req: { user: User }) {
+    return this.favoritesService.create(createfavoriteDto, req.user.id);
   }
 
   @Get()
-  findAll( @Request() user: User) {
+  findAll(@Request() req: { user: User }) {
     return this.favoritesService.findAll();
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string, @Request() user: User) {
-    return this.favoritesService.findOne(+id,user.id );
+  findOne(@Param('id') id: string, @Request() req: { user: User }) {
+    return this.favoritesService.findOne(+id, req.user.id);
   }
 
   // @Patch(':id')
-  // update(@Param('id') id: string, @Body() updatefavoriteDto: UpdateFavoriteDto, @Request() user: User) {
+  // update(@Param('id') id: string, @Body() updatefavoriteDto: UpdateFavoriteDto, @Request() req :{user: User}) {
   //   return this.favoritesService.update(+id, updatefavoriteDto,user.id);
   // }
 
   @Delete(':id')
-  remove(@Param('id') id: string, @Request() user: User) {
-    return this.favoritesService.remove(+id,user.id);
+  remove(@Param('id') id: string, @Request() req: { user: User }) {
+    return this.favoritesService.remove(+id, req.user.id);
   }
 }

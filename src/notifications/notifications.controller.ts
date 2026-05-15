@@ -15,22 +15,22 @@ export class NotificationsController {
   }
 
   @Get()
-  findAll(@Request() user: User) {
+  findAll(@Request() req :{user: User}) {
     return this.notificationsService.findAll();
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string, @Request() user: User) {
-    return this.notificationsService.findOne(+id, user.id);
+  findOne(@Param('id') id: string, @Request() req :{user: User}) {
+    return this.notificationsService.findOne(+id, req.user.id);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updatenotificationDto: UpdateNotificationDto, @Request() user: User) {
-    return this.notificationsService.update(+id, updatenotificationDto, user.id);
+  update(@Param('id') id: string, @Body() updatenotificationDto: UpdateNotificationDto, @Request() req :{user: User}) {
+    return this.notificationsService.update(+id, updatenotificationDto, req.user.id);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string, @Request() user: User) {
-    return this.notificationsService.remove(+id, user.id);
+  remove(@Param('id') id: string, @Request() req :{user: User}) {
+    return this.notificationsService.remove(+id, req.user.id);
   }
 }

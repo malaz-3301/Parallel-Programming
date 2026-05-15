@@ -31,12 +31,14 @@ export class ProductsService {
     return this.productRepository.findOne({ where: { id, count: MoreThanOrEqual(updateProductCountDto.count), deletedAt: IsNull() } })
   }
   async updateForBuy(id: number, updateProductCountDto: UpdateProductCountDto, user_id: number) {
-    const product = await this.findOneForBuy(id, updateProductCountDto);
-    if (!product) {
-      throw new NotFoundException();
-    }
-    await this.productRepository.update(id, { count: product.count - updateProductCountDto.count });
-    return product
+    return this.dataSource.transaction(async (e) => {
+      const product = await this.findOneForBuy(id, updateProductCountDto);
+      if (!product) {
+        throw new NotFoundException();
+      }
+      await this.productRepository.update(id, { count: product.count - updateProductCountDto.count });
+      return product
+    })
   }
 
   async update(id: number, updateProductDto: UpdateProductDto, user_id: number) {

@@ -32,4 +32,12 @@ export class CartsController {
   remove(@Request() req: { user: User }) {
     return this.cartsService.remove(req.user.id);
   }
+  @Post('add')
+  addToCart(@Request() req: { user: User }) {
+    return this.cartsService.create(req.user.id);
+  }
+  @Post('remove')
+  removeFromCart(@Request() req: { user: User }) {
+    return this.cartsService.create(req.user.id);
+  }
 }

@@ -37,19 +37,13 @@ import { UserProduct } from "./user-products/entities/user-product.entity";
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
         return {
-          type: 'mysql',
-          host: 'localhost',
-          port: 3306,
-          username: 'mohammed',
-          password: 'mohammed',
-          database: 'parallel_programming',
-          // host: config.get<string>('DB_HOST'),
-          // port: config.get<number>('DB_PORT'),
-          // username: config.get<string>('DB_USERNAME'),
-          // password: config.get<string>('DB_PASSWORD'),
-          // database: config.get<string>('DB_DATABASE'),
+          type: config.get<string>('DB_TYPE') as any,
+          host: config.get<string>('DB_HOST'),
+          port: config.get<number>('DB_PORT'),
+          username: config.get<string>('DB_USERNAME'),
+          password: config.get<string>('DB_PASSWORD'),
+          database: config.get<string>('DB_DATABASE'),
           entities: [Product, User, Comment, Company, Notification, Favorite, Cart, Confirm, UserProduct],
-          // autoLoadEntities: true,
           synchronize: true,
           logging: true
         };
