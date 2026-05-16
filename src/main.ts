@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { JwtAuthGuard } from './auth/utils/JwtGuard';
+import { ThrottlerGuard } from '@nestjs/throttler';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule,);

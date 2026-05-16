@@ -23,7 +23,7 @@ export class CompaniesService {
   findOneByUser(user_id: number, entityManager: EntityManager | null = null) {
     const where = { where: { user: { id: user_id } } }
     if (entityManager) {
-      return entityManager.findOne(Company, where)
+      return entityManager.findOne(Company, { ...where, lock: { mode: 'pessimistic_write' } })
     }
     return this.companyRepository.findOne(where)
   }

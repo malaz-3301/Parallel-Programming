@@ -25,13 +25,13 @@ export class UserProductsService {
     return this.userProductRepository.find();
   }
   findAllForUser(cartId: number, entityManager: EntityManager) {
-    return entityManager.find(UserProduct, { where: { cart: { id: cartId } } });
+    return entityManager.find(UserProduct, { where: { cart: { id: cartId } }, lock: { mode: 'pessimistic_write' } });
   }
 
   findOne(productId: number, cartId: number, entityManager: EntityManager) {
     const where = { where: { product: { id: productId }, cart: { id: cartId } }, loadRelationIds: true }
     if (entityManager) {
-      entityManager.findOne(UserProduct, where)
+      return entityManager.findOne(UserProduct, { ...where, lock: { mode: 'pessimistic_write' } })
     }
     return this.userProductRepository.findOne(where)
   }
@@ -68,17 +68,7 @@ export class UserProductsService {
     }
     return entityManager.delete(UserProduct, { product: { id: productId }, cart: { id: cartId } })
   }
-  async removeAll(cartId: number, entityManager: EntityManager) {
-    const userProducts = await this.findAllForUser(cartId, entityManager)
-    for (let userProduct of userProducts ) {
-      try {
-        const product = await this.productsService.updateForReturn(userProduct.product.id, { count: userProduct!.count }, entityManager)
-      }
-      catch (e) {
-
-        throw new NotFoundException();
-      }
-      return entityManager.delete(UserProduct, { product: { id: userProduct.product.id }, cart: { id: cartId } })
-    }
+  removeAll(userProductsIds: number[], entityManager: EntityManager) {
+    return entityManager.delete(UserProduct, userProductsIds)
   }
 }

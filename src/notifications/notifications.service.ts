@@ -23,12 +23,12 @@ export class NotificationsService {
   async findOne(id: number, user_id: number, entityManager: EntityManager | null = null) {
     const where = { where: { user: { id: user_id }, id } }
     if (entityManager) {
-      const notification = await entityManager.findOne(Notification, where)
-      await entityManager.update(Notification, {id : notification!.id, readAt: IsNull()}, { readAt: new Date() })
+      const notification = await entityManager.findOne(Notification, { ...where, lock: { mode: 'pessimistic_write' } })
+      await entityManager.update(Notification, { id: notification!.id, readAt: IsNull() }, { readAt: new Date() })
       return notification
     }
     const notification = await this.notificationRepository.findOne(where)
-    await this.notificationRepository.update({id : notification!.id, readAt: IsNull()}, { readAt: new Date() })
+    await this.notificationRepository.update({ id: notification!.id, readAt: IsNull() }, { readAt: new Date() })
     return notification
   }
 

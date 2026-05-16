@@ -25,7 +25,8 @@ import { ConfirmsModule } from './confirms/confirms.module';
 import { Confirm } from "./confirms/entities/confirm.entity";
 import { UserProductsModule } from './user-products/user-products.module';
 import { UserProduct } from "./user-products/entities/user-product.entity";
-
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler'
+import { BullModule } from '@nestjs/bullmq';
 @Module({
   imports: [
     AuthModule,
@@ -44,8 +45,6 @@ import { UserProduct } from "./user-products/entities/user-product.entity";
           password: config.get<string>('DB_PASSWORD'),
           database: config.get<string>('DB_DATABASE'),
           entities: [Product, User, Comment, Company, Notification, Favorite, Cart, Confirm, UserProduct],
-          synchronize: true,
-          logging: true
         };
       },
     }),
@@ -57,9 +56,29 @@ import { UserProduct } from "./user-products/entities/user-product.entity";
     FavoritesModule,
     ConfirmsModule,
     UserProductsModule,
+    ThrottlerModule.forRoot({
+      throttlers: [
+        {
+          ttl: 60000,
+          limit: 10,
+        },
+
+      ],
+    }),
+    BullModule.forRoot({
+      connection: {
+        host: 'localhost',
+        port: 6379,
+      },
+    }),
     // ValidateModule,c
   ],
   controllers: [AppController],
-  providers: [AppService,]
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard
+    },
+    AppService,]
 })
 export class AppModule { }

@@ -30,15 +30,15 @@ export class ConfirmsService {
   findOneForUser(id: number, user_id: number, entityManager: EntityManager | null = null) {
     const where = { where: { id, cart: { user: { id: user_id } } }, relations: { cart: { user: true } } };
     if (entityManager) {
-      entityManager.findOne(Confirm, where)
+      return entityManager.findOne(Confirm, { ...where, lock: { mode: 'pessimistic_write' } })
     }
     return this.confirmRepository.findOne(where)
   }
 
-  update(id: number, updateconfirmDto: UpdateConfirmDto, user_id: number) {
+  update(id: number, updateconfirmDto: UpdateConfirmDto,) {
     return this.dataSource.transaction(async (entityManager) => {
       if (updateconfirmDto.status == OrderStatus.CANCELLED) {
-        await this.cartsService.remove(user_id, entityManager)
+        await this.cartsService.removeAllFromCart(id, entityManager)
       }
       return entityManager.update(Confirm, id, updateconfirmDto)
     })

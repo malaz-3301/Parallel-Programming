@@ -20,12 +20,14 @@ export class CartsService {
     return this.cartRepository.find()
   }
   findAllForUser(user_id: number, entityManager: EntityManager) {
-    return entityManager.findOne(Cart, { where: { confirm: IsNull(), user: { id: user_id } } })
+    return entityManager.findOne(Cart, { where: { confirm: IsNull(), user: { id: user_id } }, lock: { mode: 'pessimistic_write' } },)
   }
 
   findOne(user_id: number, entityManager: EntityManager) {
-    return entityManager.findOne(Cart, { where: { confirm: IsNull(), user: { id: user_id } }, relations: { userProducts: { product: true } } })
-
+    return entityManager.findOne(Cart, { where: { confirm: IsNull(), user: { id: user_id } }, relations: { userProducts: { product: true } }, lock: { mode: 'pessimistic_write' } })
+  }
+  findOneCancelled(confirm_id: number, entityManager: EntityManager) {
+    return entityManager.findOne(Cart, { where: { confirm: { id: confirm_id } }, relations: { userProducts: true }, lock: { mode: 'pessimistic_write' } })
   }
 
   update(updateCartDto: UpdateCartDto, user_id: number, entityManager: EntityManager) {
@@ -35,24 +37,24 @@ export class CartsService {
   remove(user_id: number, entityManager: EntityManager) {
     return entityManager.delete(Cart, { user: { id: user_id } })
   }
-  async removeAllFromCart(user_id: number, entityManager: EntityManager) {
-    const cart = await this.findOne(user_id, entityManager)
-    if(!cart){
+  async removeAllFromCart(confirm_id: number, entityManager: EntityManager) {
+    const cart = await this.findOneCancelled(confirm_id, entityManager)
+    if (!cart) {
       throw new NotFoundException();
     }
-    return this.userProdutsService.removeAll(user_id, cart.id, entityManager)
+    return this.userProdutsService.removeAll(cart.userProducts.map(userProduct => userProduct.id), entityManager)
   }
 
   addToCart(addToCart: AddToCart, user_id: number) {
-    return this.dataSource.transaction(async (entityManager) => {
+    return this.dataSource.transaction(async (entityManager,) => {
       const cart = await this.findOne(user_id, entityManager)
       if (!cart) {
         const cart = await this.create(user_id, entityManager)
-        return this.userProdutsService.create({ ...addToCart, cartId: cart.id },entityManager)
+        return this.userProdutsService.create({ ...addToCart, cartId: cart.id }, entityManager)
       }
       if (cart.userProducts.some(userProduct => userProduct.product.id == addToCart.productId))
-        return this.userProdutsService.updateForUser({ ...addToCart, cartId: cart.id },entityManager)
-      return this.userProdutsService.create({ ...addToCart, cartId: cart.id },entityManager)
+        return this.userProdutsService.updateForUser({ ...addToCart, cartId: cart.id }, entityManager)
+      return this.userProdutsService.create({ ...addToCart, cartId: cart.id }, entityManager)
     })
   }
   updateCountForCartProduct(addToCart: AddToCart, user_id: number) {
@@ -62,7 +64,7 @@ export class CartsService {
         throw new NotFoundException();
       }
       if (cart.userProducts.some(userProduct => userProduct.product.id == addToCart.productId))
-        return this.userProdutsService.update({ ...addToCart, cartId: cart.id },)
+        return this.userProdutsService.update({ ...addToCart, cartId: cart.id }, entityManager)
       throw new NotFoundException();
     })
   }
@@ -73,7 +75,7 @@ export class CartsService {
       if (!cart) {
         throw new NotFoundException();
       }
-      return this.userProdutsService.remove(removeFromCart.productId, cart.id,)
+      return this.userProdutsService.remove(removeFromCart.productId, cart.id, entityManager)
     })
   }
 

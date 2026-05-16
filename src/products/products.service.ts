@@ -32,14 +32,14 @@ export class ProductsService {
   findOne(id: number, entityManager: EntityManager | null = null) {
     const where = { where: { id, deletedAt: IsNull() } }
     if (entityManager) {
-      entityManager.findOne(Product, where)
+      return entityManager.findOne(Product, { ...where, lock: { mode: 'pessimistic_write' } })
     }
     return this.productRepository.findOne(where)
   }
   findOneForBuy(id: number, updateProductCountDto: UpdateProductCountDto, entityManager: EntityManager | null = null) {
     const where = { where: { id, count: MoreThanOrEqual(updateProductCountDto.count), deletedAt: IsNull() } }
     if (entityManager) {
-      entityManager.findOne(Product, where)
+      return entityManager.findOne(Product, { ...where, lock: { mode: 'pessimistic_write' } })
     }
     return this.productRepository.findOne(where)
   }
