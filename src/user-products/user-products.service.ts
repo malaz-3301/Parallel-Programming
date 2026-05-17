@@ -15,11 +15,9 @@ export class UserProductsService {
     const product = await this.productsService.updateForBuy(createuserProductDto.productId, { count: createuserProductDto.count }, entityManager);
 
     if (!product) {
-      console.log("hgj");
       throw new NotFoundException();
     }
     const userProduct = entityManager.create(UserProduct, { ...createuserProductDto, price: createuserProductDto.count * product.price, product: { id: createuserProductDto.productId }, cart: { id: createuserProductDto.cartId } });
-    console.log(userProduct);
 
     return entityManager.save(userProduct)
   }
@@ -43,8 +41,6 @@ export class UserProductsService {
     try {
       const userProduct = await this.findOne(createUserProductDto.productId, createUserProductDto.cartId, entityManager)
       const product = await this.productsService.findOne(userProduct!.product.id, entityManager);
-      console.log(createUserProductDto);
-      console.log(userProduct);
       const newCount = userProduct!.count - createUserProductDto.count;
       if (newCount > 0)
         await this.productsService.updateForReturn(product!.id, { count: newCount }, entityManager)
@@ -58,13 +54,10 @@ export class UserProductsService {
   }
   async updateForUser(createUserProductDto: CreateUserProductDto, entityManager: EntityManager) {
     try {
-      console.log(createUserProductDto);
 
       const userProduct = await this.findOne(createUserProductDto.productId, createUserProductDto.cartId, entityManager)
-      console.log(userProduct);
 
       const product = await this.productsService.updateForBuy(userProduct!.product.id, { count: createUserProductDto.count }, entityManager);
-      console.log(product);
 
       const newCount = (createUserProductDto.count + userProduct!.count)
       return entityManager.update(UserProduct, userProduct!.id, { price: product!.price * newCount, count: newCount })

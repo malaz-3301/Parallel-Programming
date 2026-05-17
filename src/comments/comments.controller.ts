@@ -3,14 +3,18 @@ import { CommentsService } from './comments.service';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { UpdateCommentDto } from './dto/update-comment.dto';
 import { User } from 'src/users/entities/user.entity';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
+import { JobType } from './comments.process';
 
 @Controller('comments')
 export class CommentsController {
-  constructor(private readonly commentsService: CommentsService,) { }
+  constructor(private readonly commentsService: CommentsService, @InjectQueue('comment') private commentQueue: Queue<JobType>) { }
 
   @Post()
-  create(@Body() createCommentDto: CreateCommentDto, @Request() req: { user: User }) {
-    return this.commentsService.create(createCommentDto, req.user.id);
+  async create(@Body() createCommentDto: CreateCommentDto, @Request() req: { user: User }) {
+    // return this.commentsService.create(createCommentDto, req.user.id);
+    await this.commentQueue.add('create', { ...createCommentDto, user_id: req.user.id });
   }
 
   @Get()
@@ -24,12 +28,14 @@ export class CommentsController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateCommentDto: UpdateCommentDto, @Request() req: { user: User }) {
-    return this.commentsService.update(+id, updateCommentDto, req.user.id);
+  async update(@Param('id') id: string, @Body() updateCommentDto: UpdateCommentDto, @Request() req: { user: User }) {
+    // return this.commentsService.update(+id, updateCommentDto, req.user.id);
+    await this.commentQueue.add('create', { ...updateCommentDto, user_id: req.user.id, id: +id });
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string, @Request() req: { user: User }) {
-    return this.commentsService.remove(+id, req.user.id);
+  async remove(@Param('id') id: string, @Request() req: { user: User }) {
+    // return this.commentsService.remove(+id, req.user.id);
+    await this.commentQueue.add('create', { id: +id, user_id: req.user.id });
   }
 }

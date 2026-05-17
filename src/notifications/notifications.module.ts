@@ -11,6 +11,8 @@ import { BullModule } from '@nestjs/bullmq';
   imports: [TypeOrmModule.forFeature([Notification]), UsersModule,
   BullModule.registerFlowProducer({
     name: 'sendNotificationForAllUser',
+  }), BullModule.registerQueue({
+    name: 'notification',
   }),],
   controllers: [NotificationsController],
   providers: [NotificationsService, NotificationConsumer, StepsConsumer],

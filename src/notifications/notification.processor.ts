@@ -25,8 +25,6 @@ export class StepsConsumer extends WorkerHost {
                 const user = await this.usersService.findOne(index)
                 if (user)
                     await this.notificationsService.create({ userId: user.id, data: job.data.data })
-                await setTimeout(10000);
-                console.log("123")
             }
             return {
                 processed: true,

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Request } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Request, HttpCode } from '@nestjs/common';
 import { CartsService } from './carts.service';
 import { UpdateCartDto } from './dto/update-cart.dto';
 import { User } from 'src/users/entities/user.entity';
@@ -7,35 +7,39 @@ import { AddToCart } from './dto/add-to-cart';
 import { RemoveFromCart } from './dto/remove-from-cart';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
+import { JobType } from './carts.processor';
 // import { InjectQueue, } from '@nestjs/bullmq';
 // import { Queue, QueueEvents , } from 'bullmq';
 
 @Controller('carts')
 export class CartsController {
-  constructor(private readonly cartsService: CartsService, @InjectQueue('cart') private cartQueue: Queue) { }
+  constructor(private readonly cartsService: CartsService, @InjectQueue('cart') private cartQueue: Queue<JobType>) { }
   @Post('add')
-  addToCart(@Body() addToCart: AddToCart, @Request() req: { user: User }) {
-    this.cartQueue.add('add', { ...addToCart, user_id: req.user.id })
+  @HttpCode(200)
+  async addToCart(@Body() addToCart: AddToCart, @Request() req: { user: User }) {
+      await this.cartQueue.add('add', { ...addToCart, user_id: req.user.id })
+
     // const job = await this.foregroundQueue.add('addToCart', { body: addToCart, user: req.user.id })
     // const result = await job.waitUntilFinished(this.queueEvents);
     // return result
     // return this.cartsService.addToCart(addToCart, req.user.id)
+    // return { success: true }
   }
   @Post('remove')
-  removeFromCart(@Body() removeFromCart: RemoveFromCart, @Request() req: { user: User }) {
-    this.cartQueue.add('remove', { ...removeFromCart, user_id: req.user.id })
+  async removeFromCart(@Body() removeFromCart: RemoveFromCart, @Request() req: { user: User }) {
+    await this.cartQueue.add('remove', { ...removeFromCart, user_id: req.user.id })
     // const job = await this.foregroundQueue.add('removeFromCart', { body: removeFromCart, user: req.user.id })
     // const result = await job.waitUntilFinished(this.queueEvents);
     // return result
     // return this.cartsService.removeFromCart(removeFromCart, req.user.id)
   }
   @Patch('update')
-  updateCountForCartProduct(@Body() addToCart: AddToCart, @Request() req: { user: User }) {
-    // this.cartQueue.add('update', { ...addToCart, user_id: req.user.id })
+  async updateCountForCartProduct(@Body() addToCart: AddToCart, @Request() req: { user: User }) {
+    await this.cartQueue.add('update', { ...addToCart, user_id: req.user.id })
     // const job = await this.foregroundQueue.add('updateCountForCartProduct', { body: addToCart, user: req.user.id })
     // const result = await job.waitUntilFinished(this.queueEvents);
     // return result
-    return this.cartsService.updateCountForCartProduct(addToCart, req.user.id)
+    // return this.cartsService.updateCountForCartProduct(addToCart, req.user.id)
   }
   // @Post()
   // create(@Request() req: { user: User }) {

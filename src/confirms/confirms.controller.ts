@@ -5,14 +5,18 @@ import { UpdateConfirmDto } from './dto/update-confirm.dto';
 import { Request as Req } from 'express';
 import { User } from 'src/users/entities/user.entity';
 import { Roles } from 'src/auth/utils/roles.decorator';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
+import { JobType } from './confirms.process';
 
 @Controller('confirms')
 export class ConfirmsController {
-  constructor(private readonly confirmsService: ConfirmsService) { }
+  constructor(private readonly confirmsService: ConfirmsService, @InjectQueue('confirm') private confirmQueue: Queue<JobType>) { }
 
   @Post()
-  create(@Body() createconfirmDto: CreateConfirmDto, @Request() req: { user: User }) {
-    return this.confirmsService.create(createconfirmDto, req.user.id);
+  async create(@Body() createconfirmDto: CreateConfirmDto, @Request() req: { user: User }) {
+    // return this.confirmsService.create(createconfirmDto, req.user.id);
+    await this.confirmQueue.add('create', { ...createconfirmDto, user_id: req.user.id });
   }
 
   @Roles(['admin'])
@@ -29,12 +33,14 @@ export class ConfirmsController {
 
   @Roles(['admin'])
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateconfirmDto: UpdateConfirmDto, @Request() req: { user: User }) {
-    return this.confirmsService.update(+id, updateconfirmDto);
+  async update(@Param('id') id: string, @Body() updateconfirmDto: UpdateConfirmDto, @Request() req: { user: User }) {
+    // return this.confirmsService.update(+id, updateconfirmDto);
+    await this.confirmQueue.add('update', { ...updateconfirmDto, id: +id });
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string, @Request() req: { user: User }) {
-    return this.confirmsService.remove(+id, req.user.id);
+  async remove(@Param('id') id: string, @Request() req: { user: User }) {
+    // return this.confirmsService.remove(+id, req.user.id);
+    await this.confirmQueue.add('remove', { id: +id, user_id: req.user.id });
   }
 }

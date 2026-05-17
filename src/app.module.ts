@@ -74,10 +74,10 @@ import { BullModule } from '@nestjs/bullmq';
   ],
   controllers: [AppController],
   providers: [
-    {
-      provide: APP_GUARD,
-      useClass: ThrottlerGuard
-    },
+    // {
+    //   provide: APP_GUARD,
+    //   useClass: ThrottlerGuard
+    // },
     AppService,]
 })
 export class AppModule { }

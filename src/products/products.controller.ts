@@ -4,14 +4,18 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { User } from 'src/users/entities/user.entity';
 import { Roles } from 'src/auth/utils/roles.decorator';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
+import { JobType } from './products.process';
 
 @Controller('products')
 export class ProductsController {
-  constructor(private readonly productsService: ProductsService) { }
+  constructor(private readonly productsService: ProductsService, @InjectQueue('product') private productQueue: Queue<JobType>) { }
 
   @Post()
-  create(@Body() createProductDto: CreateProductDto, @Request() req: { user: User }) {
-    return this.productsService.create(createProductDto, req.user.id);
+  async create(@Body() createProductDto: CreateProductDto, @Request() req: { user: User },) {
+    // return this.productsService.create(createProductDto, req.user.id);
+    await this.productQueue.add('create', { ...createProductDto, user_id: req.user.id });
   }
   @Roles(['admin'])
   @Get('all')
@@ -29,12 +33,14 @@ export class ProductsController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateProductDto: UpdateProductDto, @Request() req: { user: User }) {
-    return this.productsService.update(+id, updateProductDto, req.user.id);
+  async update(@Param('id') id: string, @Body() updateProductDto: UpdateProductDto, @Request() req: { user: User }) {
+    // return this.productsService.update(+id, updateProductDto, req.user.id);
+    await this.productQueue.add('create', { ...updateProductDto, user_id: req.user.id, id: +id });
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string, @Request() req: { user: User }) {
-    return this.productsService.remove(+id, req.user.id);
+  async remove(@Param('id') id: string, @Request() req: { user: User }) {
+    // return this.productsService.remove(+id, req.user.id);
+    await this.productQueue.add('create', { id: +id, user_id: req.user.id });
   }
 }
