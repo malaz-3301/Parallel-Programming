@@ -5,14 +5,20 @@ import { UpdateNotificationDto } from './dto/update-notification.dto';
 import { Request as Req } from 'express';
 import { User } from 'src/users/entities/user.entity';
 import { Roles } from 'src/auth/utils/roles.decorator';
+import { CreateNotificationAllUsersDto } from './dto/create-notification-all-users.dto';
 
 @Controller('notifications')
 export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) { }
 
   @Roles(['admin'])
+  @Post('sendNotificationForAllUser')
+  sendNotificationForAllUser(@Body() createNotificationAllUsersDto: CreateNotificationAllUsersDto,) {
+    return this.notificationsService.sendNotificationForAllUser(createNotificationAllUsersDto,);
+  }
+  @Roles(['admin'])
   @Post()
-  create(@Body() createnotificationDto: CreateNotificationDto, @Request() req: { user: User }) {
+  create(@Body() createnotificationDto: CreateNotificationDto,) {
     return this.notificationsService.create(createnotificationDto,);
   }
   @Roles(['admin'])

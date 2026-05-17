@@ -12,8 +12,8 @@ export class ConfirmsService {
   constructor(@InjectRepository(Confirm) private confirmRepository: Repository<Confirm>, private cartsService: CartsService, private dataSource: DataSource) { }
   create(createconfirmDto: CreateConfirmDto, user_id) {
     return this.dataSource.transaction(async (entityManager) => {
-      const confirm = this.confirmRepository.create(createconfirmDto);
-      const savedConfirm = await this.confirmRepository.save(confirm)
+      const confirm = entityManager.create(Confirm, createconfirmDto);
+      const savedConfirm = await entityManager.save(confirm)
       await this.cartsService.update({ confirmId: savedConfirm.id }, user_id, entityManager)
       return savedConfirm
     })

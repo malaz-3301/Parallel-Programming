@@ -4,7 +4,6 @@ import { UpdateProductDto } from './dto/update-product.dto';
 import { Product } from './entities/product.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, IsNull, LessThanOrEqual, MoreThan, MoreThanOrEqual, Repository, Transaction, } from 'typeorm';
-import { UsersService } from 'src/users/users.service';
 import { CompaniesService } from 'src/companies/companies.service';
 import { UpdateProductCountDto } from './dto/update-product-count.dto';
 

@@ -6,7 +6,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, FindOptionsWhere, Repository, Transaction } from 'typeorm';
 import { Product } from 'src/products/entities/product.entity';
 import { ProductsService } from 'src/products/products.service';
-import { count } from 'console';
+import { count, log } from 'console';
 
 @Injectable()
 export class UserProductsService {
@@ -15,9 +15,12 @@ export class UserProductsService {
     const product = await this.productsService.updateForBuy(createuserProductDto.productId, { count: createuserProductDto.count }, entityManager);
 
     if (!product) {
+      console.log("hgj");
       throw new NotFoundException();
     }
     const userProduct = entityManager.create(UserProduct, { ...createuserProductDto, price: createuserProductDto.count * product.price, product: { id: createuserProductDto.productId }, cart: { id: createuserProductDto.cartId } });
+    console.log(userProduct);
+
     return entityManager.save(userProduct)
   }
 
@@ -29,9 +32,9 @@ export class UserProductsService {
   }
 
   findOne(productId: number, cartId: number, entityManager: EntityManager) {
-    const where = { where: { product: { id: productId }, cart: { id: cartId } }, loadRelationIds: true }
+    const where = { where: { product: { id: productId }, cart: { id: cartId } } }
     if (entityManager) {
-      return entityManager.findOne(UserProduct, { ...where, lock: { mode: 'pessimistic_write' } })
+      return entityManager.findOne(UserProduct, { ...where, lock: { mode: 'pessimistic_write' }, relations: { product: true, cart: true } })
     }
     return this.userProductRepository.findOne(where)
   }
@@ -40,7 +43,14 @@ export class UserProductsService {
     try {
       const userProduct = await this.findOne(createUserProductDto.productId, createUserProductDto.cartId, entityManager)
       const product = await this.productsService.findOne(userProduct!.product.id, entityManager);
-      return entityManager.update(UserProduct, userProduct!.id, { ...createUserProductDto, price: product!.price * createUserProductDto.count })
+      console.log(createUserProductDto);
+      console.log(userProduct);
+      const newCount = userProduct!.count - createUserProductDto.count;
+      if (newCount > 0)
+        await this.productsService.updateForReturn(product!.id, { count: newCount }, entityManager)
+      else
+        await this.productsService.updateForBuy(product!.id, { count: -newCount }, entityManager)
+      return entityManager.update(UserProduct, userProduct!.id, { count: createUserProductDto.count, price: product!.price * createUserProductDto.count })
     }
     catch (e) {
       throw new NotFoundException();
@@ -48,8 +58,14 @@ export class UserProductsService {
   }
   async updateForUser(createUserProductDto: CreateUserProductDto, entityManager: EntityManager) {
     try {
+      console.log(createUserProductDto);
+
       const userProduct = await this.findOne(createUserProductDto.productId, createUserProductDto.cartId, entityManager)
-      const product = await this.productsService.findOne(userProduct!.product.id, entityManager);
+      console.log(userProduct);
+
+      const product = await this.productsService.updateForBuy(userProduct!.product.id, { count: createUserProductDto.count }, entityManager);
+      console.log(product);
+
       const newCount = (createUserProductDto.count + userProduct!.count)
       return entityManager.update(UserProduct, userProduct!.id, { price: product!.price * newCount, count: newCount })
     }

@@ -35,4 +35,7 @@ export class UsersService {
   remove(id: number) {
     return this.userRepository.update(id, { userType: UserType.BANNED })
   }
+  finOneForNotifications() {
+    return this.userRepository.findOne({where : {}, order: { id: 'DESC' } })
+  }
 }

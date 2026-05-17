@@ -7,6 +7,7 @@ import { UserProductsService } from 'src/user-products/user-products.service';
 import { RemoveFromCart } from './dto/remove-from-cart';
 import { AddToCart } from './dto/add-to-cart';
 import { UsersService } from 'src/users/users.service';
+import { setTimeout } from 'timers/promises';
 
 @Injectable()
 export class CartsService {
@@ -45,15 +46,23 @@ export class CartsService {
     return this.userProdutsService.removeAll(cart.userProducts.map(userProduct => userProduct.id), entityManager)
   }
 
-  addToCart(addToCart: AddToCart, user_id: number) {
+  async addToCart(addToCart: AddToCart, user_id: number) {
+    await setTimeout(10000);
+    console.log("123")
     return this.dataSource.transaction(async (entityManager,) => {
       const cart = await this.findOne(user_id, entityManager)
       if (!cart) {
         const cart = await this.create(user_id, entityManager)
+        console.log("const");
+        
         return this.userProdutsService.create({ ...addToCart, cartId: cart.id }, entityManager)
       }
-      if (cart.userProducts.some(userProduct => userProduct.product.id == addToCart.productId))
-        return this.userProdutsService.updateForUser({ ...addToCart, cartId: cart.id }, entityManager)
+      if (cart.userProducts.some(userProduct => userProduct.product.id == addToCart.productId)){
+        console.log("if");
+        
+        return this.userProdutsService.updateForUser({ ...addToCart, cartId: cart.id }, entityManager)}
+      console.log("return");
+      
       return this.userProdutsService.create({ ...addToCart, cartId: cart.id }, entityManager)
     })
   }

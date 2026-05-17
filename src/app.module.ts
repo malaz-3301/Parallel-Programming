@@ -60,7 +60,7 @@ import { BullModule } from '@nestjs/bullmq';
       throttlers: [
         {
           ttl: 60000,
-          limit: 10,
+          limit: 10000,
         },
 
       ],
@@ -71,7 +71,6 @@ import { BullModule } from '@nestjs/bullmq';
         port: 6379,
       },
     }),
-    // ValidateModule,c
   ],
   controllers: [AppController],
   providers: [
