@@ -27,6 +27,8 @@ import { UserProductsModule } from './user-products/user-products.module';
 import { UserProduct } from "./user-products/entities/user-product.entity";
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler'
 import { BullModule } from '@nestjs/bullmq';
+import * as path from 'path';
+
 @Module({
   imports: [
     AuthModule,
@@ -34,6 +36,13 @@ import { BullModule } from '@nestjs/bullmq';
     CommentsModule,
     CompaniesModule,
     ProductsModule,
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: [
+        `.env.${process.env.NODE_ENV ?? 'development'}`,
+        '.env',
+      ],
+    }),
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
