@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Request } from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
@@ -10,18 +10,23 @@ import { JobType } from './products.process';
 
 @Controller('products')
 export class ProductsController {
-  constructor(private readonly productsService: ProductsService, @InjectQueue('product') private productQueue: Queue<JobType>) { }
+  constructor(
+    private readonly productsService: ProductsService,
+    @InjectQueue('product') private readonly productQueue: Queue<JobType>,
+  ) {}
 
   @Post()
-  async create(@Body() createProductDto: CreateProductDto, @Request() req: { user: User },) {
-    // return this.productsService.create(createProductDto, req.user.id);
+  async create(@Body() createProductDto: CreateProductDto, @Request() req: { user: User }) {
     await this.productQueue.add('create', { ...createProductDto, user_id: req.user.id });
+    return { status: 'queued' };
   }
+
   @Roles(['admin'])
   @Get('all')
   findAllWithDeleted() {
     return this.productsService.findAllWithDeleted();
   }
+
   @Get('')
   findAllAvailable() {
     return this.productsService.findAll();
@@ -34,13 +39,13 @@ export class ProductsController {
 
   @Patch(':id')
   async update(@Param('id') id: string, @Body() updateProductDto: UpdateProductDto, @Request() req: { user: User }) {
-    // return this.productsService.update(+id, updateProductDto, req.user.id);
-    await this.productQueue.add('create', { ...updateProductDto, user_id: req.user.id, id: +id });
+    await this.productQueue.add('update', { ...updateProductDto, user_id: req.user.id, id: +id });
+    return { status: 'queued' };
   }
 
   @Delete(':id')
   async remove(@Param('id') id: string, @Request() req: { user: User }) {
-    // return this.productsService.remove(+id, req.user.id);
-    await this.productQueue.add('create', { id: +id, user_id: req.user.id });
+    await this.productQueue.add('remove', { id: +id, user_id: req.user.id });
+    return { status: 'queued' };
   }
 }

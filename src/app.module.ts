@@ -98,10 +98,10 @@ import { User } from "./users/entities/user.entity";
   ],
   controllers: [AppController],
   providers: [
-    {
-      provide: APP_GUARD,
-      useClass: ThrottlerGuard,
-    },
+    // {
+    //   provide: APP_GUARD,
+    //   useClass: ThrottlerGuard,
+    // },
     AppService,
   ],
 })
