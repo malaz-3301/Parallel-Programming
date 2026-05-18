@@ -5,11 +5,19 @@ export class AppService {
   getHello(): string {
     return 'Hello World!';
   }
-}
-// navigator.locks.request("net_db_sync", showLockProperties);
-// navigator.locks.request("another_lock", { mode: "shared" }, showLockProperties);
 
-// function showLockProperties(lock) {
-//   console.log(`The lock name is: ${lock.name}`);
-//   console.log(`The lock mode is: ${lock.mode}`);
-// }
+  getHealth() {
+    return {
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  getInstance() {
+    return {
+      instanceId: process.env.INSTANCE_ID ?? 'local',
+      appName: process.env.APP_NAME ?? 'local',
+      nodeEnv: process.env.NODE_ENV ?? 'development',
+    };
+  }
+}

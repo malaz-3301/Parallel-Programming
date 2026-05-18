@@ -1,37 +1,45 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Request } from '@nestjs/common';
-import { NotificationsService } from './notifications.service';
-import { CreateNotificationDto } from './dto/create-notification.dto';
-import { UpdateNotificationDto } from './dto/update-notification.dto';
-import { Request as Req } from 'express';
-import { User } from 'src/users/entities/user.entity';
-import { Roles } from 'src/auth/utils/roles.decorator';
-import { CreateNotificationAllUsersDto } from './dto/create-notification-all-users.dto';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Request } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
-import { JobType } from './notifications.process';
+import { Roles } from 'src/auth/utils/roles.decorator';
+import { User } from 'src/users/entities/user.entity';
+import { CreateNotificationAllUsersDto } from './dto/create-notification-all-users.dto';
+import { CreateNotificationDto } from './dto/create-notification.dto';
+import { UpdateNotificationDto } from './dto/update-notification.dto';
+import { NotificationsService } from './notifications.service';
+
+type NotificationQueueJob =
+  | CreateNotificationDto
+  | (UpdateNotificationDto & { id: number })
+  | { id: number };
 
 @Controller('notifications')
 export class NotificationsController {
-  constructor(private readonly notificationsService: NotificationsService, @InjectQueue('notification') private notificationQueue: Queue<JobType>) { }
+  constructor(
+    private readonly notificationsService: NotificationsService,
+    @InjectQueue('notification') private readonly notificationQueue: Queue<NotificationQueueJob>,
+  ) {}
 
   @Roles(['admin'])
   @Post('sendNotificationForAllUser')
-  sendNotificationForAllUser(@Body() createNotificationAllUsersDto: CreateNotificationAllUsersDto,) {
-    return this.notificationsService.sendNotificationForAllUser(createNotificationAllUsersDto,);
+  sendNotificationForAllUser(@Body() createNotificationAllUsersDto: CreateNotificationAllUsersDto) {
+    return this.notificationsService.sendNotificationForAllUser(createNotificationAllUsersDto);
   }
+
   @Roles(['admin'])
   @Post()
-  async create(@Body() createnotificationDto: CreateNotificationDto,) {
-    // return this.notificationsService.create(createnotificationDto,);
-    await this.notificationQueue.add('remove', createnotificationDto);
+  async create(@Body() createNotificationDto: CreateNotificationDto) {
+    await this.notificationQueue.add('create', createNotificationDto);
+    return { status: 'queued' };
   }
+
   @Roles(['admin'])
   @Get()
   findAll() {
     return this.notificationsService.findAll();
   }
 
-  @Get()
+  @Get('my')
   findAllForUser(@Request() req: { user: User }) {
     return this.notificationsService.findAllForUser(req.user.id);
   }
@@ -43,15 +51,16 @@ export class NotificationsController {
 
   @Roles(['admin'])
   @Patch(':id')
-  async update(@Param('id') id: string, @Body() updatenotificationDto: UpdateNotificationDto,) {
-    // return this.notificationsService.update(+id, updatenotificationDto, req.user.id);
-    await this.notificationQueue.add('remove', { ...updatenotificationDto, id: +id, });
+  async update(@Param('id') id: string, @Body() updateNotificationDto: UpdateNotificationDto) {
+    await this.notificationQueue.add('update', { ...updateNotificationDto, id: +id });
+    return { status: 'queued' };
   }
+
   @Roles(['admin'])
   @Delete('delete/:id')
-  async remove(@Param('id') id: string,) {
-    // return this.notificationsService.remove(+id,);
-    await this.notificationQueue.add('remove', { id: +id, });
+  async remove(@Param('id') id: string) {
+    await this.notificationQueue.add('remove', { id: +id });
+    return { status: 'queued' };
   }
 
   @Delete(':id')

@@ -1,12 +1,12 @@
-import { Injectable, ExecutionContext, UnauthorizedException } from "@nestjs/common";
-import { Reflector } from "@nestjs/core";
-import { AuthGuard } from "@nestjs/passport";
-import { IS_PUBLIC_KEY } from "src/public.module";
-import { UserType } from "src/users/utils/user-type";
+import { ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
+import { AuthGuard } from '@nestjs/passport';
+import { IS_PUBLIC_KEY } from 'src/public.module';
+import { UserType } from 'src/users/utils/user-type';
 
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') {
-  constructor(private reflector: Reflector) {
+  constructor(private readonly reflector: Reflector) {
     super();
   }
 
@@ -15,15 +15,23 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
       context.getHandler(),
       context.getClass(),
     ]);
+
     if (isPublic) {
       return true;
     }
+
     return super.canActivate(context);
   }
-  override handleRequest<TUser = any>(err: any, user: any, info: any, context: ExecutionContext, status?: any): TUser {
-    if (user.userType == UserType.BANNED) {
+
+  override handleRequest<TUser = any>(err: any, user: any): TUser {
+    if (err || !user) {
+      throw err || new UnauthorizedException();
+    }
+
+    if (user.userType === UserType.BANNED) {
       throw new UnauthorizedException();
     }
-    return user
+
+    return user;
   }
 }
