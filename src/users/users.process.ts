@@ -7,8 +7,8 @@ import { using } from 'rxjs';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 export type JobType = Job<CreateUserDto, any, 'create'> | Job<UpdateUserDto & { id: number }, any, 'update'> | Job<{ id: number }, any, 'remove'>
-@Processor('cart', { concurrency: 64 })
-export class Useronsumer extends WorkerHost {
+@Processor('user', { concurrency: 64 })
+export class UserConsumer extends WorkerHost {
     constructor(private usresService: UsersService) { super() }
     async process(job: JobType): Promise<any> {
         switch (job.name) {

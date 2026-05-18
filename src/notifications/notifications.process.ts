@@ -8,8 +8,8 @@ import { CreateNotificationDto } from './dto/create-notification.dto';
 import { UpdateNotificationDto } from './dto/update-notification.dto';
 import { NotificationsService } from './notifications.service';
 export type JobType = Job<CreateNotificationDto, any, 'create'> | Job<UpdateNotificationDto & { id: number }, any, 'update'> | Job<{ id: number } & { [key: string]: never }, any, 'remove'>
-@Processor('cart', { concurrency: 64 })
-export class Useronsumer extends WorkerHost {
+@Processor('notification', { concurrency: 64 })
+export class NotificationsConsumer extends WorkerHost {
     constructor(private notificationsService: NotificationsService) { super() }
     async process(job: JobType): Promise<any> {
         switch (job.name) {

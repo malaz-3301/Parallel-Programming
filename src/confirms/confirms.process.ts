@@ -8,8 +8,8 @@ import { ConfirmsService } from './confirms.service';
 import { CreateConfirmDto } from './dto/create-confirm.dto';
 import { UpdateConfirmDto } from './dto/update-confirm.dto';
 export type JobType = Job<CreateConfirmDto & { user_id: number }, any, 'create'> | Job<UpdateConfirmDto & { id: number }, any, 'update'> | Job<{ id: number } & { user_id: number }, any, 'remove'>
-@Processor('cart', { concurrency: 64 })
-export class Useronsumer extends WorkerHost {
+@Processor('confirm', { concurrency: 64 })
+export class ConfirmConsumer extends WorkerHost {
     constructor(private confirmsService: ConfirmsService) { super() }
     async process(job: JobType): Promise<any> {
         switch (job.name) {

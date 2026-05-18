@@ -10,6 +10,7 @@ import { JobType } from './carts.processor';
 
 @Controller('carts')
 export class CartsController {
+<<<<<<< Updated upstream
   private readonly maxWaitingJobs: number;
 
   constructor(
@@ -18,6 +19,21 @@ export class CartsController {
     @InjectQueue('cart') private readonly cartQueue: Queue<JobType>,
   ) {
     this.maxWaitingJobs = Number(this.configService.get<string>('CART_QUEUE_MAX_WAITING') ?? 5000);
+=======
+  constructor(private readonly cartsService: CartsService, @InjectQueue('cart') private cartQueue: Queue<JobType>) { }
+  @Post('add')
+  @HttpCode(200)
+  async addToCart(@Body() addToCart: AddToCart, @Request() req: { user: User }) {
+    console.log("dfjsak");
+    
+      // await this.cartQueue.add('add', { ...addToCart, user_id: req.user.id })
+
+    // const job = await this.foregroundQueue.add('addToCart', { body: addToCart, user: req.user.id })
+    // const result = await job.waitUntilFinished(this.queueEvents);
+    // return result
+    return this.cartsService.addToCart(addToCart, req.user.id)
+    // return { success: true }
+>>>>>>> Stashed changes
   }
 
   @Post('add')

@@ -26,7 +26,7 @@ export class NotificationsService {
       children.push({ name: 'send', queueName: 'steps', data: { usersIds: { min: usersCount, max: usersCount }, data: createNotificationAllUsersDto.data }, opts: { failParentOnFailure: false } })
     }
 
-    await this.notificationQueue.add({ name: 'sendNotifications', queueName: 'notification', children })
+    await this.notificationQueue.add({ name: 'sendNotifications', queueName: 'notifications', children })
     return
   }
 

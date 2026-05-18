@@ -1,11 +1,15 @@
 import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
+<<<<<<< Updated upstream
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CompaniesModule } from 'src/companies/companies.module';
 import { Product } from './entities/product.entity';
 import { ProductConsumer } from './products.process';
 import { ProductsController } from './products.controller';
 import { ProductsService } from './products.service';
+=======
+import { ProductConsumer } from './products.process';
+>>>>>>> Stashed changes
 
 @Module({
   imports: [
@@ -23,6 +27,10 @@ import { ProductsService } from './products.service';
   ],
   controllers: [ProductsController],
   providers: [ProductsService, ProductConsumer],
+<<<<<<< Updated upstream
   exports: [ProductsService],
+=======
+  exports: [ProductsService]
+>>>>>>> Stashed changes
 })
 export class ProductsModule {}
