@@ -3,10 +3,13 @@ import { FavoritesService } from './favorites.service';
 import { FavoritesController } from './favorites.controller';
 import { Favorite } from './entities/favorite.entity';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { BullModule } from '@nestjs/bullmq';
 
 @Module({
-  imports : [TypeOrmModule.forFeature([Favorite])],
+  imports: [TypeOrmModule.forFeature([Favorite]), BullModule.registerQueue({
+    name: 'favorite',
+  }),],
   controllers: [FavoritesController],
   providers: [FavoritesService],
 })
-export class FavoritesModule {}
+export class FavoritesModule { }

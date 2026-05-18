@@ -6,10 +6,13 @@ import { Request as Req } from 'express';
 import { User } from 'src/users/entities/user.entity';
 import { Roles } from 'src/auth/utils/roles.decorator';
 import { CreateNotificationAllUsersDto } from './dto/create-notification-all-users.dto';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
+import { JobType } from './notifications.process';
 
 @Controller('notifications')
 export class NotificationsController {
-  constructor(private readonly notificationsService: NotificationsService) { }
+  constructor(private readonly notificationsService: NotificationsService, @InjectQueue('notification') private notificationQueue: Queue<JobType>) { }
 
   @Roles(['admin'])
   @Post('sendNotificationForAllUser')
@@ -18,8 +21,9 @@ export class NotificationsController {
   }
   @Roles(['admin'])
   @Post()
-  create(@Body() createnotificationDto: CreateNotificationDto,) {
-    return this.notificationsService.create(createnotificationDto,);
+  async create(@Body() createnotificationDto: CreateNotificationDto,) {
+    // return this.notificationsService.create(createnotificationDto,);
+    await this.notificationQueue.add('remove', createnotificationDto);
   }
   @Roles(['admin'])
   @Get()
@@ -39,13 +43,15 @@ export class NotificationsController {
 
   @Roles(['admin'])
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updatenotificationDto: UpdateNotificationDto, @Request() req: { user: User }) {
-    return this.notificationsService.update(+id, updatenotificationDto, req.user.id);
+  async update(@Param('id') id: string, @Body() updatenotificationDto: UpdateNotificationDto,) {
+    // return this.notificationsService.update(+id, updatenotificationDto, req.user.id);
+    await this.notificationQueue.add('remove', { ...updatenotificationDto, id: +id, });
   }
   @Roles(['admin'])
   @Delete('delete/:id')
-  remove(@Param('id') id: string,) {
-    return this.notificationsService.remove(+id,);
+  async remove(@Param('id') id: string,) {
+    // return this.notificationsService.remove(+id,);
+    await this.notificationQueue.add('remove', { id: +id, });
   }
 
   @Delete(':id')

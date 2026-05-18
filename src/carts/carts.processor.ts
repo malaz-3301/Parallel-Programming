@@ -5,28 +5,22 @@ import { UsersService } from 'src/users/users.service';
 import { setTimeout } from 'timers/promises';
 import { CartsService } from './carts.service';
 import { AddToCart } from './dto/add-to-cart';
-// type jobType = AddToCart & { user_id: number }
-@Processor('cart')
+import { using } from 'rxjs';
+import { RemoveFromCart } from './dto/remove-from-cart';
+export type JobType = Job<AddToCart & { user_id: number }, any, 'add'> | Job<RemoveFromCart & { user_id: number }, any, 'remove'> | Job<AddToCart & { user_id: number }, any, 'update'>
+@Processor('cart', { concurrency: 64 })
 export class CartConsumer extends WorkerHost {
     constructor(private cartsService: CartsService) { super() }
-    async process(job: Job<any, any, string>): Promise<any> {
+    async process(job: JobType): Promise<any> {
         switch (job.name) {
             case 'add': {
-                const ers = await this.cartsService.addToCart({ ...job.data }, job.data.user_id)
-                console.log(ers);
-
-                console.log("dkfjlka");
-                break
+                return await this.cartsService.addToCart({ ...job.data }, job.data.user_id)
             }
             case 'remove': {
-                await this.cartsService.removeFromCart({ ...job.data }, job.data.user_id)
-                break
+                return await this.cartsService.removeFromCart({ ...job.data }, job.data.user_id)
             }
             case 'update': {
-                const jgh = await this.cartsService.updateCountForCartProduct({ ...job.data }, job.data.user_id)
-                console.log(jgh);
-                
-                break
+                return await this.cartsService.updateCountForCartProduct({ ...job.data }, job.data.user_id)
             }
         }
     }

@@ -4,14 +4,18 @@ import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 import { Roles } from 'src/auth/utils/roles.decorator';
 import { User } from 'src/users/entities/user.entity';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
+import { JobType } from './companies.process';
 
 @Controller('companies')
 export class CompaniesController {
-  constructor(private readonly companiesService: CompaniesService) { }
+  constructor(private readonly companiesService: CompaniesService, @InjectQueue('company') private companyQueue: Queue<JobType>) { }
   @Roles(['admin'])
   @Post()
-  create(@Body() createCompanyDto: CreateCompanyDto, @Request() req: { user: User }) {
-    return this.companiesService.create(createCompanyDto, req.user.id);
+  async create(@Body() createCompanyDto: CreateCompanyDto, @Request() req: { user: User }) {
+    // return this.companiesService.create(createCompanyDto, req.user.id);
+    await this.companyQueue.add('create', { ...createCompanyDto, user_id: req.user.id });
   }
 
   @Get()
@@ -25,8 +29,9 @@ export class CompaniesController {
   }
   @Roles(['admin'])
   @Patch('update/:id')
-  update(@Param('id') id: string, @Body() updateCompanyDto: UpdateCompanyDto,) {
-    return this.companiesService.update(+id, updateCompanyDto,);
+  async update(@Param('id') id: string, @Body() updateCompanyDto: UpdateCompanyDto,) {
+    // return this.companiesService.update(+id, updateCompanyDto,);
+    await this.companyQueue.add('create', {...updateCompanyDto, id: +id});
   }
   @Patch(':id')
   updateForUser(@Param('id') id: string, @Body() updateCompanyDto: UpdateCompanyDto, @Request() req: { user: User }) {
@@ -34,7 +39,8 @@ export class CompaniesController {
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.companiesService.remove(+id);
+  async remove(@Param('id') id: string) {
+    // return this.companiesService.remove(+id);
+    await this.companyQueue.add('create', {id: +id});
   }
 }

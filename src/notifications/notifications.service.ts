@@ -18,7 +18,7 @@ export class NotificationsService {
   }
   async sendNotificationForAllUser(createNotificationAllUsersDto: CreateNotificationAllUsersDto) {
     const users = await this.usersService.finOneForNotifications();
-    if(!users){
+    if (!users) {
       throw new NotFoundException();
     }
     const children: FlowChildJob[] = []
@@ -36,7 +36,9 @@ export class NotificationsService {
   findAllForUser(user_id: number) {
     return this.notificationRepository.find({ where: { user: { id: user_id } } })
   }
-  async findOneForAdmin(id: number, user_id: number, entityManager: EntityManager | null = null) { }
+  async findOneForAdmin(id: number, entityManager: EntityManager) {
+    return entityManager.findOne(Notification, { where: { id }, lock: { mode: 'pessimistic_write' } })
+  }
   async findOne(id: number, user_id: number, entityManager: EntityManager | null = null) {
     const where = { where: { user: { id: user_id }, id } }
     if (entityManager) {
@@ -49,9 +51,9 @@ export class NotificationsService {
     return notification
   }
 
-  update(id: number, updatenotificationDto: UpdateNotificationDto, user_id: number) {
+  update(id: number, updatenotificationDto: UpdateNotificationDto) {
     return this.dataSource.transaction(async (entityManager) => {
-      const notification = await this.findOne(id, user_id, entityManager)
+      const notification = await this.findOneForAdmin(id, entityManager)
       if (notification && !notification.readAt) {
         return entityManager.update(Notification, id, updatenotificationDto)
       }

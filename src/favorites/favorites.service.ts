@@ -21,10 +21,10 @@ export class FavoritesService {
     return this.favoriteRepository.findOne({ where: { id, user: { id: user_id } }, relations: { product: true } })
   }
 
-  // async update(id: number, updatefavoriteDto: UpdateFavoriteDto, user_id: number) {
-  //   const favorite = await this.favoriteRepository.findOne({ where: { id, user: { id: user_id } } });
-  //   return this.favoriteRepository.update(id, { ...updatefavoriteDto, user: { id: user_id } });
-  // }
+  async update(id: number, updatefavoriteDto: UpdateFavoriteDto, user_id: number) {
+    const favorite = await this.favoriteRepository.findOne({ where: { id, user: { id: user_id } } });
+    return this.favoriteRepository.update(id, { ...updatefavoriteDto, user: { id: user_id } });
+  }
 
   remove(id: number, user_id: number) {
     return this.favoriteRepository.delete({ id, user: { id: user_id } })
