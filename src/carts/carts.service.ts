@@ -48,15 +48,20 @@ export class CartsService {
 
   async addToCart(addToCart: AddToCart, user_id: number) {
     return this.dataSource.transaction(async (entityManager,) => {
+      console.log("sdfalsj");
+      
       const cart = await this.findOne(user_id, entityManager)
       if (!cart) {
         const cart = await this.create(user_id, entityManager)
+        console.log("const");
         
         return this.userProdutsService.create({ ...addToCart, cartId: cart.id }, entityManager)
       }
       if (cart.userProducts.some(userProduct => userProduct.product.id == addToCart.productId)){
+        console.log("if");
         
         return this.userProdutsService.updateForUser({ ...addToCart, cartId: cart.id }, entityManager)}
+      console.log("return");
       
       return this.userProdutsService.create({ ...addToCart, cartId: cart.id }, entityManager)
     })

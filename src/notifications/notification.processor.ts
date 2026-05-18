@@ -4,6 +4,7 @@ import { CreateNotificationDto } from './dto/create-notification.dto';
 import { UpdateNotificationDto } from './dto/update-notification.dto';
 import { NotificationsService } from './notifications.service';
 import { UsersService } from 'src/users/users.service';
+<<<<<<< Updated upstream
 
 type NotificationJob =
   | Job<CreateNotificationDto, any, 'create'>
@@ -11,6 +12,10 @@ type NotificationJob =
   | Job<{ id: number }, any, 'remove'>;
 
 @Processor('notification', { concurrency: 8 })
+=======
+import { setTimeout } from 'timers/promises';
+@Processor('notifications')
+>>>>>>> Stashed changes
 export class NotificationConsumer extends WorkerHost {
   constructor(private readonly notificationsService: NotificationsService) {
     super();
