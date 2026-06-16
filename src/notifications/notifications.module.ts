@@ -1,18 +1,11 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-<<<<<<< Updated upstream
 import { BullModule } from '@nestjs/bullmq';
 import { UsersModule } from 'src/users/users.module';
 import { Notification } from './entities/notification.entity';
 import { NotificationConsumer, StepsConsumer } from './notification.processor';
 import { NotificationsController } from './notifications.controller';
 import { NotificationsService } from './notifications.service';
-=======
-import { UsersModule } from 'src/users/users.module';
-import {  StepsConsumer } from './notification.processor';
-import { BullModule } from '@nestjs/bullmq';
-import { NotificationsConsumer } from './notifications.process';
->>>>>>> Stashed changes
 
 @Module({
   imports: [
@@ -43,12 +36,7 @@ import { NotificationsConsumer } from './notifications.process';
     ),
   ],
   controllers: [NotificationsController],
-<<<<<<< Updated upstream
   providers: [NotificationsService, NotificationConsumer, StepsConsumer],
   exports: [NotificationsService],
-=======
-  providers: [NotificationsService, NotificationsConsumer, StepsConsumer,NotificationsConsumer],
-  exports: [NotificationsService]
->>>>>>> Stashed changes
 })
 export class NotificationsModule {}

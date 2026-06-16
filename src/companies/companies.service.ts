@@ -3,7 +3,7 @@ import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 import { Company } from './entities/company.entity';
 import { InjectRepository } from '@nestjs/typeorm';
-import { EntityManager, IsNull, Not, Repository } from 'typeorm';
+import { IsNull, Not, Repository } from 'typeorm';
 
 @Injectable()
 export class CompaniesService {
@@ -20,11 +20,8 @@ export class CompaniesService {
   findOne(id: number) {
     return this.companyRepository.findOne({ where: { id, user: { id: Not(IsNull()) } } })
   }
-  findOneByUser(user_id: number, entityManager: EntityManager | null = null) {
+  findOneByUser(user_id: number, ) {
     const where = { where: { user: { id: user_id } } }
-    if (entityManager) {
-      return entityManager.findOne(Company, { ...where, lock: { mode: 'pessimistic_write' } })
-    }
     return this.companyRepository.findOne(where)
   }
 

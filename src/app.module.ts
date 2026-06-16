@@ -31,14 +31,14 @@ import { Product } from "./products/entities/product.entity";
 import { DailySalesSummary } from "./sales-batch/entities/daily-sales-summary.entity";
 import { UserProduct } from "./user-products/entities/user-product.entity";
 import { User } from "./users/entities/user.entity";
-
+import { CacheModule } from '@nestjs/cache-manager'
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: [`.env.${process.env.NODE_ENV ?? "development"}`, ".env"],
     }),
-
+    CacheModule.register({ttl: 8000, isGlobal: true}),
     ScheduleModule.forRoot(),
 
     ThrottlerModule.forRoot({
@@ -84,15 +84,15 @@ import { User } from "./users/entities/user.entity";
     }),
 
     AuthModule,
+    UserProductsModule,
     UsersModule,
     CommentsModule,
+    ConfirmsModule,
     CompaniesModule,
-    ProductsModule,
     CartsModule,
     NotificationsModule,
+    ProductsModule,
     FavoritesModule,
-    ConfirmsModule,
-    UserProductsModule,
     SalesBatchModule,
     ValidateModule,
   ],
@@ -105,4 +105,4 @@ import { User } from "./users/entities/user.entity";
     AppService,
   ],
 })
-export class AppModule {}
+export class AppModule { }

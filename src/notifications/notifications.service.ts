@@ -36,29 +36,22 @@ export class NotificationsService {
   findAllForUser(user_id: number) {
     return this.notificationRepository.find({ where: { user: { id: user_id } } })
   }
-  async findOneForAdmin(id: number, entityManager: EntityManager) {
-    return entityManager.findOne(Notification, { where: { id }, lock: { mode: 'pessimistic_write' } })
+  async findOneForAdmin(id: number) {
+    return this.notificationRepository.findOne({ where: { id } })
   }
-  async findOne(id: number, user_id: number, entityManager: EntityManager | null = null) {
+  async findOne(id: number, user_id: number) {
     const where = { where: { user: { id: user_id }, id } }
-    if (entityManager) {
-      const notification = await entityManager.findOne(Notification, { ...where, lock: { mode: 'pessimistic_write' } })
-      await entityManager.update(Notification, { id: notification!.id, readAt: IsNull() }, { readAt: new Date() })
-      return notification
-    }
     const notification = await this.notificationRepository.findOne(where)
     await this.notificationRepository.update({ id: notification!.id, readAt: IsNull() }, { readAt: new Date() })
     return notification
   }
 
-  update(id: number, updatenotificationDto: UpdateNotificationDto) {
-    return this.dataSource.transaction(async (entityManager) => {
-      const notification = await this.findOneForAdmin(id, entityManager)
-      if (notification && !notification.readAt) {
-        return entityManager.update(Notification, id, updatenotificationDto)
-      }
-      throw new UnauthorizedException();
-    })
+  async update(id: number, updatenotificationDto: UpdateNotificationDto) {
+    const notification = await this.findOneForAdmin(id)
+    if (notification && !notification.readAt) {
+      return this.notificationRepository.update(id, updatenotificationDto)
+    }
+    throw new UnauthorizedException();
   }
 
   removeForUser(id: number, user_id: number) {

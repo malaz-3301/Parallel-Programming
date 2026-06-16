@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { UsersModule } from 'src/users/users.module';
@@ -11,7 +11,7 @@ import { Cart } from './entities/cart.entity';
 @Module({
   imports: [
     TypeOrmModule.forFeature([Cart]),
-    UserProductsModule,
+    forwardRef(() => UserProductsModule),
     UsersModule,
     BullModule.registerQueue({
       name: 'cart',

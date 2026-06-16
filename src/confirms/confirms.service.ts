@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { Injectable, NotFoundException, UnauthorizedException, Inject, forwardRef } from '@nestjs/common';
 import { CreateConfirmDto } from './dto/create-confirm.dto';
 import { UpdateConfirmDto } from './dto/update-confirm.dto';
 import { Confirm } from './entities/confirm.entity';
@@ -9,7 +9,11 @@ import { OrderStatus } from './utils/order-status';
 
 @Injectable()
 export class ConfirmsService {
-  constructor(@InjectRepository(Confirm) private confirmRepository: Repository<Confirm>, private cartsService: CartsService, private dataSource: DataSource) { }
+  constructor(
+    @InjectRepository(Confirm) private confirmRepository: Repository<Confirm>,
+    @Inject(forwardRef(() => CartsService)) private cartsService: CartsService,
+    private dataSource: DataSource,
+  ) { }
   create(createconfirmDto: CreateConfirmDto, user_id) {
     return this.dataSource.transaction(async (entityManager) => {
       const confirm = entityManager.create(Confirm, createconfirmDto);
@@ -59,4 +63,4 @@ export class ConfirmsService {
 }
 
 
-//
+

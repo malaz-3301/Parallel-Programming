@@ -7,6 +7,7 @@ import { Roles } from 'src/auth/utils/roles.decorator';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { JobType } from './products.process';
+import { Public } from 'src/public.module';
 
 @Controller('products')
 export class ProductsController {
@@ -30,6 +31,16 @@ export class ProductsController {
   @Get('')
   findAllAvailable() {
     return this.productsService.findAll();
+  }
+  @Public()
+  @Get('best-sellers')
+  findAllBestSellers() {
+    return this.productsService.findBestSellers();
+  }
+  @Public()
+  @Get('best-rating')
+  findAllBestRating() {
+    return this.productsService.findBestRating();
   }
 
   @Get(':id')

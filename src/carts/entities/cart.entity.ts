@@ -1,6 +1,6 @@
 import { Confirm } from "src/confirms/entities/confirm.entity";
 import { User } from "src/users/entities/user.entity";
-import { Column, Entity, JoinColumn, JoinTable, ManyToMany, ManyToOne, OneToMany, OneToOne, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, JoinColumn, JoinTable, ManyToMany, ManyToOne, OneToMany, OneToOne, PrimaryGeneratedColumn, VersionColumn } from "typeorm";
 import { UserProduct } from "src/user-products/entities/user-product.entity";
 @Entity()
 export class Cart {
@@ -15,4 +15,8 @@ export class Cart {
     @OneToOne(() => Confirm, { onDelete: 'CASCADE' })
     @JoinColumn()
     confirm!: Confirm;
+    @VersionColumn()
+    version!: number;
+    // @Column({ onUpdate: 'CURRENT_TIMESTAMP' })
+    // updatedAt!: Date;
 }

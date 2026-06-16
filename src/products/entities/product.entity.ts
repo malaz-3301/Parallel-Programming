@@ -1,7 +1,7 @@
 import { Comment } from "src/comments/entities/comment.entity";
 import { Company } from "src/companies/entities/company.entity";
 import { UserProduct } from "src/user-products/entities/user-product.entity";
-import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn, VersionColumn } from "typeorm";
 
 @Entity()
 export class Product {
@@ -32,4 +32,6 @@ export class Product {
 
     @Column({ nullable: true })
     deletedAt!: Date;
+    @VersionColumn()
+    version!: number;
 }

@@ -2,7 +2,7 @@ import { Cart } from "src/carts/entities/cart.entity";
 import { Product } from "src/products/entities/product.entity";
 import { Column, Entity, ManyToMany, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 @Entity()
-export class UserProduct {
+export class  UserProduct {
     @PrimaryGeneratedColumn()
     id!: number
     @ManyToOne(() => Product, )
