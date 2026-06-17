@@ -26,13 +26,13 @@ export class CartsService {
     return this.cartRepository.findOne({ where: { confirm: IsNull(), user: { id: user_id } } },)
   }
   findOneWithoutProductsByUserId(user_id: number, entityManager: EntityManager) {
-    return entityManager.findOne(Cart, { where: { user: { id: user_id } }, relations: { userProducts: true } })
+    return entityManager.findOne(Cart, { where: { user: { id: user_id }, confirm: IsNull() }, relations: { userProducts: true } })
   }
   findOne(user_id: number) {
     return this.cartRepository.findOne({ where: { confirm: IsNull(), user: { id: user_id } }, relations: { userProducts: { product: true } } })
   }
   findOneCancelled(confirm_id: number) {
-    return this.cartRepository.findOne({ where: { confirm: { id: confirm_id } }, relations: { userProducts: true } })
+    return this.cartRepository.findOne({ where: { confirm: { id: confirm_id } }, relations: { userProducts: { product: true } } })
   }
   update(updateCartDto: UpdateCartDto, user_id: number, version: number, entityManager: EntityManager) {
     return entityManager.update(Cart, { user: { id: user_id }, version }, { confirm: { id: updateCartDto.confirmId }, price: updateCartDto.price })
@@ -49,12 +49,12 @@ export class CartsService {
     });
   }
   async removeAllFromCart(confirm_id: number, entityManager: EntityManager) {
-    const cart = await entityManager.findOne(Cart, { where: { confirm: { id: confirm_id } }, relations: { userProducts: true } });
+    const cart = await this.findOneCancelled(confirm_id)
     if (!cart) {
       throw new NotFoundException();
     }
-    await this.userProdutsService.removeAll(cart.userProducts.map(userProduct => ({ productId: userProduct.id, productCount: userProduct.count })), entityManager)
-    return entityManager.delete(Cart, { confirm: { id: confirm_id } })
+    console.log("cart", cart)
+    await this.userProdutsService.removeAll(cart.userProducts.map(userProduct => ({ productId: userProduct.product.id, productCount: userProduct.count })), entityManager)
   }
   async addToCart(addToCart: AddToCart, user_id: number) {
     return this.dataSource.transaction(async (entityManager) => {
@@ -78,35 +78,15 @@ export class CartsService {
       if (!cart) {
         throw new NotFoundException();
       }
-      // if (cart.userProducts.some(userProduct => userProduct.product.id == updatecart.productId))
-      // return this.userProdutsService.add, { ...updatecart, cartId: cart.id }, entityManager)
       const userProduct = await this.userProdutsService.updateCountForCartProduct({ ...updatecart, cartId: cart.id }, entityManager)
-      // console.log(userProduct, cart, )
       const oldUserProduct = cart.userProducts.find(product => product.id == userProduct.id);
       if (!oldUserProduct) {
         throw new NotFoundException()
       }
       return this.update({ price: cart.price + userProduct.price - oldUserProduct.price },
         user_id, cart.version, entityManager);
-      // throw new NotFoundException();
     });
   }
-
-  // updatePrice(cartId: number, entityManager: EntityManager) {
-  //   return entityManager.createQueryBuilder()
-  //     .update("cart")
-  //     .set({
-  //       // استخدام استعلام فرعي لحساب المجموع مباشرة داخل التحديث
-  //       price: () => `(
-  //           SELECT COALESCE(SUM("user_product"."price"), 0) 
-  //           FROM "user_product" 
-  //           WHERE "user_product"."cartId" = :cartId
-  //       )`
-  //     })
-  //     .where("id = :cartId", { cartId })
-  //     .execute();
-
-  // }
   async removeFromCart(removeFromCart: RemoveFromCart, user_id: number) {
     return this.dataSource.transaction(async (entityManager) => {
       const cart = await this.findOneWithoutProductsByUserId(user_id, entityManager)

@@ -14,7 +14,7 @@ export class UserConsumer extends WorkerHost {
         console.log(job)
         switch (job.name) {
             case 'create': {
-                return await this.usresService.create({ ...job.data })
+                return await this.usresService.createUser({ ...job.data })
             }
             case 'update': {
                 return await this.usresService.update(job.data.id, { ...job.data })

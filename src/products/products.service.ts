@@ -160,12 +160,6 @@ export class ProductsService {
         await this.updateCountAndPrice(products[index].productId, { count: product.count + products[index].productCount }, entityManager);
       }
     }
-    // entityManager.createQueryBuilder(Product, 'product').update()
-    // await entityManager.createQueryBuilder()
-    //   .update('product')
-    //   .set({
-    //     count: () => `"product"."count" + "userProduct"."count"`
-    //   })
   }
   async update(id: number, updateProductDto: UpdateProductDto, user_id: number) {
     return this.dataSource.transaction(async (entityManager) => {

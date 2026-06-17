@@ -18,6 +18,7 @@ export class AuthService {
     if (!user) {
       throw new UnauthorizedException();
     }
+    console.log(comparePasswords(pass, user?.password))
     if (comparePasswords(pass, user?.password)) {
       const { password, ...result } = user;
       return result;

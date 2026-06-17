@@ -11,11 +11,14 @@ import { CartsService } from 'src/carts/carts.service';
 
 @Injectable()
 export class UsersService {
-  constructor(@InjectRepository(User) private userRepository: Repository<User>,private cartsService: CartsService) { }
+  constructor(@InjectRepository(User) private userRepository: Repository<User>, private cartsService: CartsService) { }
   create(createUserDto: CreateUserDto) {
-    const password = encodePassword(createUserDto.password)
-    const user = this.userRepository.create({ ...createUserDto, password });
+    const user = this.userRepository.create(createUserDto);
     return this.userRepository.save(user)
+  }
+  createUser(createUserDto: CreateUserDto) {
+    const password = encodePassword(createUserDto.password)
+    return this.create({ ...createUserDto, password })
   }
 
   findAll() {
@@ -36,7 +39,7 @@ export class UsersService {
   }
 
   async remove(id: number) {
-    console.log('id'+id)
+    console.log('id' + id)
     await this.cartsService.remove(id);
     return this.userRepository.update(id, { userType: UserType.BANNED })
   }

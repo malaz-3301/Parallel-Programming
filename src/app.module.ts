@@ -69,7 +69,6 @@ import { CacheModule } from '@nestjs/cache-manager'
           max: Number(config.get<string>("DB_POOL_MAX") ?? 10),
           connectionTimeoutMillis: 5000,
         },
-        logging: true
       }),
     }),
 
