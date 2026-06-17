@@ -12,7 +12,7 @@ import { Cart } from './entities/cart.entity';
   imports: [
     TypeOrmModule.forFeature([Cart]),
     forwardRef(() => UserProductsModule),
-    UsersModule,
+    forwardRef(() => UsersModule),
     BullModule.registerQueue({
       name: 'cart',
       defaultJobOptions: {
@@ -27,4 +27,4 @@ import { Cart } from './entities/cart.entity';
   providers: [CartsService, CartConsumer],
   exports: [CartsService],
 })
-export class CartsModule {}
+export class CartsModule { }

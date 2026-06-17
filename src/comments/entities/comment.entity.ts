@@ -1,6 +1,6 @@
 import { Product } from "src/products/entities/product.entity"
 import { User } from "src/users/entities/user.entity"
-import { Column, Entity, JoinColumn, ManyToOne, OneToOne, PrimaryColumn, PrimaryGeneratedColumn } from "typeorm"
+import { Column, Entity, JoinColumn, ManyToOne, OneToOne, PrimaryColumn, PrimaryGeneratedColumn, VersionColumn } from "typeorm"
 @Entity()
 export class Comment {
     @PrimaryGeneratedColumn()

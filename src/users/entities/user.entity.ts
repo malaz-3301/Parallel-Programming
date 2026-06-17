@@ -1,7 +1,7 @@
 import { Cart } from "src/carts/entities/cart.entity"
 import { Comment } from "src/comments/entities/comment.entity"
 import { Notification } from "src/notifications/entities/notification.entity"
-import { Column, Entity, JoinColumn, OneToMany, PrimaryColumn, PrimaryGeneratedColumn, Timestamp } from "typeorm"
+import { Column, Entity, JoinColumn, OneToMany, PrimaryColumn, PrimaryGeneratedColumn, Timestamp, VersionColumn } from "typeorm"
 import { UserType } from "../utils/user-type"
 @Entity()
 export class User {
@@ -23,5 +23,4 @@ export class User {
     carts!: Cart[]
     @Column({ type: 'enum', enum: UserType, default: UserType.USER })
     userType!: UserType
-
 }

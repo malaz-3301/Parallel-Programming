@@ -7,7 +7,6 @@ import { Roles } from 'src/auth/utils/roles.decorator';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { JobType } from './users.process';
-
 @UseGuards(RolesGuard)
 @Controller('users')
 export class UsersController {
@@ -15,7 +14,6 @@ export class UsersController {
   @Roles(['admin'])
   @Post()
   async create(@Body() createUserDto: CreateUserDto) {
-    // return this.usersService.create(createUserDto);
     await this.userQueue.add('create', createUserDto);
   }
   @Roles(['admin'])
@@ -30,14 +28,11 @@ export class UsersController {
   }
   @Patch(':id')
   async update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
-    // return this.usersService.update(+id, updateUserDto);
     await this.userQueue.add('update', { ...updateUserDto, id: +id });
   }
   @Roles(['admin'])
   @Delete(':id')
   async remove(@Param('id') id: string) {
-    // return this.usersService.remove(+id);
     await this.userQueue.add('remove', { id: +id });
   }
-
 }

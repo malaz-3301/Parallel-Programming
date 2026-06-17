@@ -38,7 +38,7 @@ import { CacheModule } from '@nestjs/cache-manager'
       isGlobal: true,
       envFilePath: [`.env.${process.env.NODE_ENV ?? "development"}`, ".env"],
     }),
-    CacheModule.register({ttl: 8000, isGlobal: true}),
+    CacheModule.register({ ttl: 8000, isGlobal: true }),
     ScheduleModule.forRoot(),
 
     ThrottlerModule.forRoot({
@@ -69,6 +69,7 @@ import { CacheModule } from '@nestjs/cache-manager'
           max: Number(config.get<string>("DB_POOL_MAX") ?? 10),
           connectionTimeoutMillis: 5000,
         },
+        logging: true
       }),
     }),
 
@@ -98,10 +99,6 @@ import { CacheModule } from '@nestjs/cache-manager'
   ],
   controllers: [AppController],
   providers: [
-    // {
-    //   provide: APP_GUARD,
-    //   useClass: ThrottlerGuard,
-    // },
     AppService,
   ],
 })

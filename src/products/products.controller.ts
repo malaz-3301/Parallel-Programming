@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Request } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Request, Query, UseGuards } from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
@@ -8,13 +8,15 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { JobType } from './products.process';
 import { Public } from 'src/public.module';
-
+import { FilterProductDto } from './dto/filter-product-dto';
+import { RolesGuard } from 'src/auth/utils/roles.guard';
+@UseGuards(RolesGuard)
 @Controller('products')
 export class ProductsController {
   constructor(
     private readonly productsService: ProductsService,
     @InjectQueue('product') private readonly productQueue: Queue<JobType>,
-  ) {}
+  ) { }
 
   @Post()
   async create(@Body() createProductDto: CreateProductDto, @Request() req: { user: User }) {
@@ -27,10 +29,10 @@ export class ProductsController {
   findAllWithDeleted() {
     return this.productsService.findAllWithDeleted();
   }
-
-  @Get('')
-  findAllAvailable() {
-    return this.productsService.findAll();
+  @Public()
+  @Get('filter')
+  findAllAvailable(@Query() dto:FilterProductDto) {
+    return this.productsService.findAll(dto);
   }
   @Public()
   @Get('best-sellers')

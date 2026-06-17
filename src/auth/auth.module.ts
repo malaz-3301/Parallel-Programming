@@ -9,6 +9,7 @@ import { AuthService } from './services/auth/auth.service';
 import { JwtAuthGuard } from './utils/JwtGuard';
 import { JwtStrategy } from './utils/JwtStrategy';
 import { LocalStrategy } from './utils/LocalStrategy';
+import { RolesGuard } from './utils/roles.guard';
 
 @Module({
   imports: [
@@ -39,6 +40,10 @@ import { LocalStrategy } from './utils/LocalStrategy';
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
     },
     AuthService,
     JwtStrategy,

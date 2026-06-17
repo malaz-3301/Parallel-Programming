@@ -24,7 +24,8 @@ export class CartsController {
   @HttpCode(202)
   async addToCart(@Body() addToCart: AddToCart, @Request() req: { user: User }) {
     await this.ensureCartQueueCapacity();
-    await this.cartQueue.add('add', { ...addToCart, user_id: req.user.id });
+    // await this.cartQueue.add('add', { ...addToCart, user_id: req.user.id });
+    return  this.cartsService.addToCart(addToCart, req.user.id)
 
     return { status: 'queued' };
   }
@@ -42,7 +43,8 @@ export class CartsController {
   @HttpCode(202)
   async updateCountForCartProduct(@Body() addToCart: AddToCart, @Request() req: { user: User }) {
     await this.ensureCartQueueCapacity();
-    await this.cartQueue.add('update', { ...addToCart, user_id: req.user.id });
+    // await this.cartQueue.add('update', { ...addToCart, user_id: req.user.id });
+    return this.cartsService.updateCountForCartProduct(addToCart, req.user.id)
 
     return { status: 'queued' };
   }

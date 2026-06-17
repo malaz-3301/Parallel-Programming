@@ -14,11 +14,15 @@ export class ConfirmsService {
     @Inject(forwardRef(() => CartsService)) private cartsService: CartsService,
     private dataSource: DataSource,
   ) { }
-  create(createconfirmDto: CreateConfirmDto, user_id) {
+  create(createconfirmDto: CreateConfirmDto, user_id: number) {
     return this.dataSource.transaction(async (entityManager) => {
+      const cart = await this.cartsService.findOneWithoutProductsByUserId(user_id, entityManager)
+      if (!cart) {
+        throw new NotFoundException();
+      }
       const confirm = entityManager.create(Confirm, createconfirmDto);
       const savedConfirm = await entityManager.save(confirm)
-      await this.cartsService.update({ confirmId: savedConfirm.id }, user_id, entityManager)
+      await this.cartsService.update({ confirmId: savedConfirm.id }, user_id, cart.version, entityManager)
       return savedConfirm
     })
   }

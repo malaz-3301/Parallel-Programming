@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Request } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Request, UseGuards } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { Roles } from 'src/auth/utils/roles.decorator';
@@ -7,12 +7,13 @@ import { CreateNotificationAllUsersDto } from './dto/create-notification-all-use
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { UpdateNotificationDto } from './dto/update-notification.dto';
 import { NotificationsService } from './notifications.service';
+import { RolesGuard } from 'src/auth/utils/roles.guard';
 
 type NotificationQueueJob =
   | CreateNotificationDto
   | (UpdateNotificationDto & { id: number })
   | { id: number };
-
+@UseGuards(RolesGuard)
 @Controller('notifications')
 export class NotificationsController {
   constructor(

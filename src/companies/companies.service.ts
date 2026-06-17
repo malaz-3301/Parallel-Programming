@@ -9,6 +9,7 @@ import { IsNull, Not, Repository } from 'typeorm';
 export class CompaniesService {
   constructor(@InjectRepository(Company) private companyRepository: Repository<Company>,) { }
   create(createCompanyDto: CreateCompanyDto, user_id: number) {
+    console.log("dkfjklajl")
     const company = this.companyRepository.create({ ...createCompanyDto, user: { id: user_id } });
     return this.companyRepository.save(company)
   }

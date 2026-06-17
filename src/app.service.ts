@@ -13,22 +13,18 @@ import { DailySalesSummary } from './sales-batch/entities/daily-sales-summary.en
 import { UserType } from './users/utils/user-type';
 import { OrderStatus } from './confirms/utils/order-status';
 import { encodePassword } from './auth/utils/bcrypt';
-
 @Injectable()
 export class AppService {
-  constructor(private readonly dataSource: DataSource) {}
-
+  constructor(private readonly dataSource: DataSource) { }
   getHello(): string {
     return 'Hello World!';
   }
-
   getHealth() {
     return {
       status: 'ok',
       timestamp: new Date().toISOString(),
     };
   }
-
   getInstance() {
     return {
       instanceId: process.env.INSTANCE_ID ?? 'local',
@@ -36,16 +32,12 @@ export class AppService {
       nodeEnv: process.env.NODE_ENV ?? 'development',
     };
   }
-
   async seed() {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
     try {
-      // Clear all tables safely
       await queryRunner.query('TRUNCATE TABLE "daily_sales_summary", "favorite", "notification", "comment", "confirm", "user_product", "cart", "product", "company", "user" CASCADE;');
-
-      // 1. Create 105 Users
       const users: User[] = [];
       const passwordHash = encodePassword('password123');
       for (let i = 1; i <= 105; i++) {
@@ -59,8 +51,6 @@ export class AppService {
         users.push(user);
       }
       await queryRunner.manager.save(User, users);
-
-      // 2. Create 105 Companies
       const companies: Company[] = [];
       for (let i = 1; i <= 105; i++) {
         const company = queryRunner.manager.create(Company, {
@@ -72,8 +62,6 @@ export class AppService {
         companies.push(company);
       }
       await queryRunner.manager.save(Company, companies);
-
-      // 3. Create 105 Products
       const products: Product[] = [];
       for (let i = 1; i <= 105; i++) {
         const product = queryRunner.manager.create(Product, {
@@ -86,8 +74,6 @@ export class AppService {
         products.push(product);
       }
       await queryRunner.manager.save(Product, products);
-
-      // 4. Create 105 Comments
       const comments: Comment[] = [];
       for (let i = 1; i <= 105; i++) {
         const comment = queryRunner.manager.create(Comment, {
@@ -99,8 +85,6 @@ export class AppService {
         comments.push(comment);
       }
       await queryRunner.manager.save(Comment, comments);
-
-      // 5. Create 105 Carts
       const carts: Cart[] = [];
       for (let i = 1; i <= 105; i++) {
         const cart = queryRunner.manager.create(Cart, {
@@ -110,8 +94,6 @@ export class AppService {
         carts.push(cart);
       }
       await queryRunner.manager.save(Cart, carts);
-
-      // 6. Create 105 Confirms
       const confirms: Confirm[] = [];
       for (let i = 1; i <= 105; i++) {
         const confirm = queryRunner.manager.create(Confirm, {
@@ -123,26 +105,19 @@ export class AppService {
         confirms.push(confirm);
       }
       await queryRunner.manager.save(Confirm, confirms);
-
-      // Link Cart to Confirm
       for (let i = 1; i <= 105; i++) {
         carts[i - 1].confirm = confirms[i - 1];
       }
       await queryRunner.manager.save(Cart, carts);
-
-      // 7. Create UserProducts (items in cart)
-      // To show best sellers, make some products have higher sales
       const userProducts: UserProduct[] = [];
       for (let i = 1; i <= 105; i++) {
         let count = 1;
         const product = products[i - 1];
-        
         if (i === 1) count = 50;
         else if (i === 2) count = 40;
         else if (i === 3) count = 30;
         else if (i === 4) count = 20;
         else if (i === 5) count = 15;
-        
         const userProduct = queryRunner.manager.create(UserProduct, {
           count: count,
           price: product.price * count,
@@ -152,14 +127,10 @@ export class AppService {
         userProducts.push(userProduct);
       }
       await queryRunner.manager.save(UserProduct, userProducts);
-
-      // Update cart prices
       for (let i = 0; i < 105; i++) {
         carts[i].price = userProducts[i].price;
       }
       await queryRunner.manager.save(Cart, carts);
-
-      // 8. Create 105 Favorites
       const favorites: Favorite[] = [];
       for (let i = 1; i <= 105; i++) {
         const favorite = queryRunner.manager.create(Favorite, {
@@ -169,8 +140,6 @@ export class AppService {
         favorites.push(favorite);
       }
       await queryRunner.manager.save(Favorite, favorites);
-
-      // 9. Create 105 Notifications
       const notifications: Notification[] = [];
       for (let i = 1; i <= 105; i++) {
         const notification = queryRunner.manager.create(Notification, {
@@ -180,8 +149,6 @@ export class AppService {
         notifications.push(notification);
       }
       await queryRunner.manager.save(Notification, notifications);
-
-      // 10. Create 105 DailySalesSummaries
       const summaries: DailySalesSummary[] = [];
       for (let i = 1; i <= 105; i++) {
         const summary = queryRunner.manager.create(DailySalesSummary, {
@@ -193,7 +160,6 @@ export class AppService {
         summaries.push(summary);
       }
       await queryRunner.manager.save(DailySalesSummary, summaries);
-
       await queryRunner.commitTransaction();
       return { success: true, message: 'Database seeded successfully with 105 records per table' };
     } catch (err) {

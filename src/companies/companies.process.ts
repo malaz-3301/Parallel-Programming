@@ -8,10 +8,11 @@ import { CompaniesService } from './companies.service';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 export type JobType = Job<CreateCompanyDto & { user_id: number }, any, 'create'> | Job<UpdateCompanyDto & { id: number }, any, 'update'> | Job<{ id: number }, any, 'remove'>
-@Processor('compnay', { concurrency: 64 })
+@Processor('company', { concurrency: 64 })
 export class CompnayConsumer extends WorkerHost {
     constructor(private compnaysService: CompaniesService) { super() }
     async process(job: JobType): Promise<any> {
+        console.log("dkfjklajl")
         switch (job.name) {
             case 'create': {
                 return await this.compnaysService.create({ ...job.data }, job.data.user_id)

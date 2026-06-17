@@ -17,6 +17,4 @@ export class Cart {
     confirm!: Confirm;
     @VersionColumn()
     version!: number;
-    // @Column({ onUpdate: 'CURRENT_TIMESTAMP' })
-    // updatedAt!: Date;
 }

@@ -6,9 +6,8 @@ import { ThrottlerGuard } from '@nestjs/throttler';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule,);
   app.useGlobalPipes(
-    new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }),
+    new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
   );
-  // app.useGlobalGuards(new JwtAuthGuard)
   await app.listen(process.env.PORT ?? 3000);
 }
 

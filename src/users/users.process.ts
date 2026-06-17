@@ -11,6 +11,7 @@ export type JobType = Job<CreateUserDto, any, 'create'> | Job<UpdateUserDto & { 
 export class UserConsumer extends WorkerHost {
     constructor(private usresService: UsersService) { super() }
     async process(job: JobType): Promise<any> {
+        console.log(job)
         switch (job.name) {
             case 'create': {
                 return await this.usresService.create({ ...job.data })
