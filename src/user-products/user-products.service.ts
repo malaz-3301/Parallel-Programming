@@ -1,88 +1,193 @@
-import { Injectable, NotFoundException, Inject, forwardRef, BadRequestException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import {
+  EntityManager,
+  FindManyOptions,
+  FindOneOptions,
+  Repository,
+} from 'typeorm';
+import { ProductsService } from 'src/products/products.service';
 import { CreateUserProductDto } from './dto/create-user-product.dto';
 import { UserProduct } from './entities/user-product.entity';
-import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, Repository } from 'typeorm';
-import { ProductsService } from 'src/products/products.service';
+
 @Injectable()
 export class UserProductsService {
   constructor(
-    @InjectRepository(UserProduct) private userProductRepository: Repository<UserProduct>,
-    private dataSource: DataSource,
-    @Inject(forwardRef(() => ProductsService)) private productsService: ProductsService,
-  ) { }
-  async create(createuserProductDto: CreateUserProductDto, entityManager: EntityManager) {
-    const product = await this.productsService.updateForBuy(createuserProductDto.productId, { count: createuserProductDto.count }, entityManager);
+    @InjectRepository(UserProduct)
+    private readonly userProductRepository: Repository<UserProduct>,
+    private readonly productsService: ProductsService,
+  ) {}
+
+  async create(
+    createUserProductDto: CreateUserProductDto,
+    entityManager: EntityManager,
+  ) {
+    const product = await this.productsService.findAvailableProduct(
+      createUserProductDto.productId,
+      createUserProductDto.count,
+      entityManager,
+    );
+
     if (!product) {
-      throw new NotFoundException();
+      throw new ConflictException('The requested quantity is not available');
     }
-    const userProduct = entityManager.create(UserProduct, { ...createuserProductDto, price: createuserProductDto.count * product.price, product: { id: createuserProductDto.productId }, cart: { id: createuserProductDto.cartId } });
-    return entityManager.save(userProduct)
+
+    const userProduct = entityManager.create(UserProduct, {
+      count: createUserProductDto.count,
+      price: Number(product.price) * createUserProductDto.count,
+      productId: createUserProductDto.productId,
+      cartId: createUserProductDto.cartId,
+    });
+
+    return entityManager.save(UserProduct, userProduct);
   }
+
   findAll() {
     return this.userProductRepository.find();
   }
-  findAllForUser(cartId: number, entityManager: EntityManager | null = null) {
-    const where = { where: { cart: { id: cartId } } };
+
+  findAllForCart(cartId: number, entityManager?: EntityManager) {
+    const options: FindManyOptions<UserProduct> = {
+      where: { cartId },
+      relations: { product: true },
+    };
+
     if (entityManager) {
-      return entityManager.find(UserProduct, { ...where, lock: { mode: 'pessimistic_write' as const } });
+      return entityManager.find(UserProduct, options);
     }
-    return this.userProductRepository.find(where);
+
+    return this.userProductRepository.find(options);
   }
-  findOne(productId: number, cartId: number, entityManager: EntityManager | null = null) {
-    const where = { where: { product: { id: productId }, cart: { id: cartId } } }
-    if (entityManager)
-      return entityManager.findOne(UserProduct, where)
-    return this.userProductRepository.findOne(where)
-  }
-  async update(id: number, createUserProductDto: CreateUserProductDto, entityManager: EntityManager) {
-    let existingUserProduct = await entityManager.findOne(UserProduct, { where: { id }, relations: { product: true } });
-    if (!existingUserProduct) throw new NotFoundException();
-    const countDiff = createUserProductDto.count - existingUserProduct.count;
-    let product;
-    console.log("countDiff", countDiff)
-    if (countDiff > 0) {
-      product = await this.productsService.updateForBuy(createUserProductDto.productId, { count: countDiff }, entityManager);
-    } else if (countDiff < 0) {
-      await this.productsService.updateForReturn([{ productId: createUserProductDto.productId, productCount: -countDiff }], entityManager);
-      product = existingUserProduct.product;
-    } else {
-      product = existingUserProduct.product;
+
+  findOne(productId: number, cartId: number, entityManager?: EntityManager) {
+    const options: FindOneOptions<UserProduct> = {
+      where: { productId, cartId },
+      relations: { product: true },
+    };
+
+    if (entityManager) {
+      return entityManager.findOne(UserProduct, options);
     }
-    if (!product)
+
+    return this.userProductRepository.findOne(options);
+  }
+
+  async updateCount(
+    id: number,
+    createUserProductDto: CreateUserProductDto,
+    entityManager: EntityManager,
+  ) {
+    const existingItem = await entityManager.findOne(UserProduct, {
+      where: { id },
+      relations: { product: true },
+    });
+
+    if (!existingItem) {
       throw new NotFoundException();
-    existingUserProduct = { ...existingUserProduct, count: createUserProductDto.count, price: product.price * createUserProductDto.count }
-    await entityManager.update(UserProduct, { id: existingUserProduct.id, version: existingUserProduct.version }, { count: createUserProductDto.count, price: product.price * createUserProductDto.count });
-    return existingUserProduct
+    }
+
+    const product = await this.productsService.findAvailableProduct(
+      createUserProductDto.productId,
+      createUserProductDto.count,
+      entityManager,
+    );
+
+    if (!product) {
+      throw new ConflictException('The requested quantity is not available');
+    }
+
+    const price = Number(product.price) * createUserProductDto.count;
+    const updateResult = await entityManager.update(
+      UserProduct,
+      { id: existingItem.id, version: existingItem.version },
+      { count: createUserProductDto.count, price },
+    );
+
+    if (updateResult.affected !== 1) {
+      throw new ConflictException('The cart item was changed by another request');
+    }
+
+    return {
+      ...existingItem,
+      count: createUserProductDto.count,
+      price,
+      version: existingItem.version + 1,
+    };
   }
-  async remove(productId: number, cartId: number, entityManager: EntityManager) {
+
+  async remove(
+    productId: number,
+    cartId: number,
+    entityManager: EntityManager,
+  ) {
     const userProduct = await this.findOne(productId, cartId, entityManager);
+
     if (!userProduct) {
       throw new NotFoundException();
     }
-    await this.productsService.updateForReturn([{ productId, productCount: userProduct.count }], entityManager);
-    await entityManager.delete(UserProduct, userProduct.id);
-    return userProduct
-  }
-  async removeAll(products: { productId: number, productCount: number }[], entityManager: EntityManager) {
-    console.log("products", products)
-    await this.productsService.updateForReturn(products, entityManager);
-    return entityManager.delete(UserProduct, products.map(product => product.productId));
-  }
-  async addToCart(createuserProductDto: CreateUserProductDto, entityManager: EntityManager) {
-    const userProduct = await this.findOne(createuserProductDto.productId, createuserProductDto.cartId);
-    console.log(userProduct)
-    if (userProduct) {
-      throw new BadRequestException();
+
+    const deleteResult = await entityManager.delete(UserProduct, {
+      id: userProduct.id,
+    });
+
+    if (deleteResult.affected !== 1) {
+      throw new ConflictException('The cart item was changed by another request');
     }
-    return this.create(createuserProductDto, entityManager);
+
+    return userProduct;
   }
-  async updateCountForCartProduct(createuserProductDto: CreateUserProductDto, entityManager: EntityManager) {
-    const userProduct = await this.findOne(createuserProductDto.productId, createuserProductDto.cartId);
-    console.log(userProduct)
+
+  async deleteByIds(ids: number[], entityManager: EntityManager) {
+    if (!ids.length) {
+      return;
+    }
+
+    const result = await entityManager.delete(UserProduct, ids);
+    if (result.affected !== ids.length) {
+      throw new ConflictException('One or more cart items changed concurrently');
+    }
+  }
+
+  async addToCart(
+    createUserProductDto: CreateUserProductDto,
+    entityManager: EntityManager,
+  ) {
+    const existingItem = await this.findOne(
+      createUserProductDto.productId,
+      createUserProductDto.cartId,
+      entityManager,
+    );
+
+    if (existingItem) {
+      throw new BadRequestException('The product is already in the cart');
+    }
+
+    return this.create(createUserProductDto, entityManager);
+  }
+
+  async updateCountForCartProduct(
+    createUserProductDto: CreateUserProductDto,
+    entityManager: EntityManager,
+  ) {
+    const userProduct = await this.findOne(
+      createUserProductDto.productId,
+      createUserProductDto.cartId,
+      entityManager,
+    );
+
     if (!userProduct) {
       throw new NotFoundException();
     }
-    return this.update(userProduct.id, { ...createuserProductDto, count: createuserProductDto.count }, entityManager)
+
+    return this.updateCount(
+      userProduct.id,
+      createUserProductDto,
+      entityManager,
+    );
   }
 }

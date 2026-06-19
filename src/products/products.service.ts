@@ -1,200 +1,358 @@
-import { Inject, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Between, Brackets, DataSource, EntityManager, FindManyOptions, IsNull, LessThanOrEqual, Like, MoreThanOrEqual, Repository } from 'typeorm';
+import {
+  Brackets,
+  DataSource,
+  EntityManager,
+  IsNull,
+  MoreThanOrEqual,
+  Repository,
+} from 'typeorm';
+import { RedisCacheService } from 'src/cache/redis-cache.service';
 import { CompaniesService } from 'src/companies/companies.service';
+import { OrderStatus } from 'src/confirms/utils/order-status';
 import { CreateProductDto } from './dto/create-product.dto';
+import { FilterProductDto } from './dto/filter-product-dto';
 import { UpdateProductCountPriceDto } from './dto/update-product-count-price.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { Product } from './entities/product.entity';
-import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager';
-import { OrderStatus } from 'src/confirms/utils/order-status';
-import { ConfigService } from '@nestjs/config';
-import { FilterProductDto } from './dto/filter-product-dto';
+
+export type StockItem = {
+  productId: number;
+  quantity: number;
+};
+
+const CACHE_KEYS = {
+  bestSellers: 'products:best-sellers',
+  bestRating: 'products:best-rating',
+  product: (id: number) => `products:${id}`,
+};
+
 @Injectable()
 export class ProductsService {
   constructor(
-    @InjectRepository(Product) private readonly productRepository: Repository<Product>,
+    @InjectRepository(Product)
+    private readonly productRepository: Repository<Product>,
     private readonly dataSource: DataSource,
     private readonly companiesService: CompaniesService,
-    @Inject(CACHE_MANAGER) private cacheManager: Cache,
+    private readonly cache: RedisCacheService,
     private readonly configService: ConfigService,
-  ) { }
-  async create(createProductDto: CreateProductDto, user_id: number) {
-    const company = await this.companiesService.findOneByUser(user_id);
+  ) {}
+
+  async create(createProductDto: CreateProductDto, userId: number) {
+    const company = await this.companiesService.findOneByUser(userId);
+
     if (!company) {
       throw new UnauthorizedException();
     }
+
     const product = this.productRepository.create({
       ...createProductDto,
       company: { id: company.id },
     });
-    return this.productRepository.save(product);
+    const savedProduct = await this.productRepository.save(product);
+
+    await this.invalidateCatalogCache();
+    return savedProduct;
   }
+
   findAllWithDeleted() {
     return this.productRepository.find();
   }
+
   async findBestSellers() {
-    const bestSellers = await this.cacheManager.get<Product[]>('best_sellers');
-    if (bestSellers) {
-      console.log('from cache');
-      return bestSellers;
+    const cached = await this.cache.get<Record<string, unknown>[]>(
+      CACHE_KEYS.bestSellers,
+    );
+
+    if (cached) {
+      return cached;
     }
-    const getBestSellers = await this.BestSellers();
-    const catalogTtl = Number(this.configService.get<string>('CACHE_TTL')) || 600;
-    await this.cacheManager.set('best_sellers', getBestSellers, catalogTtl * 1000);
-    return getBestSellers;
+
+    const products = await this.bestSellersQuery();
+    await this.cache.set(
+      CACHE_KEYS.bestSellers,
+      products,
+      this.catalogTtlSeconds(),
+    );
+    return products;
   }
+
   async findBestRating() {
-    const bestRating = await this.cacheManager.get<Product[]>('best_rating');
-    if (bestRating) {
-      console.log('from cache');
-      return bestRating;
+    const cached = await this.cache.get<Record<string, unknown>[]>(
+      CACHE_KEYS.bestRating,
+    );
+
+    if (cached) {
+      return cached;
     }
-    const getBestRating = await this.BestRating();
-    const catalogTtl = Number(this.configService.get<string>('CACHE_TTL')) || 600;
-    await this.cacheManager.set('best_rating', getBestRating, catalogTtl * 1000);
-    return getBestRating;
+
+    const products = await this.bestRatingQuery();
+    await this.cache.set(
+      CACHE_KEYS.bestRating,
+      products,
+      this.catalogTtlSeconds(),
+    );
+    return products;
   }
+
   async findAll(productDto: FilterProductDto | null = null) {
-    const queryBuilder = this.productRepository.createQueryBuilder('product')
+    const queryBuilder = this.productRepository
+      .createQueryBuilder('product')
       .where('product.deletedAt IS NULL');
-    if (productDto?.minPrice !== undefined && productDto?.maxPrice !== undefined) {
+
+    if (
+      productDto?.minPrice !== undefined &&
+      productDto?.maxPrice !== undefined
+    ) {
       queryBuilder.andWhere('product.price BETWEEN :minPrice AND :maxPrice', {
         minPrice: productDto.minPrice,
         maxPrice: productDto.maxPrice,
       });
-    }
-    else if (productDto?.maxPrice !== undefined) {
+    } else if (productDto?.maxPrice !== undefined) {
       queryBuilder.andWhere('product.price <= :maxPrice', {
         maxPrice: productDto.maxPrice,
       });
-    }
-    else if (productDto?.minPrice !== undefined) {
+    } else if (productDto?.minPrice !== undefined) {
       queryBuilder.andWhere('product.price >= :minPrice', {
         minPrice: productDto.minPrice,
       });
     }
+
     if (productDto?.keywords) {
-      const keywords = productDto.keywords.split(' ').filter(word => word.trim() !== '');
-      if (keywords.length > 0) {
+      const keywords = productDto.keywords
+        .split(/\s+/)
+        .map((word) => word.trim())
+        .filter(Boolean);
+
+      if (keywords.length) {
         let scoreFormula = '';
-        queryBuilder.andWhere(new Brackets(qb => {
-          keywords.forEach((word, index) => {
-            const paramName = `word_${index}`;
-            if (index === 0) {
-              qb.where(`product.details LIKE :${paramName}`, { [paramName]: `%${word}%` });
-            } else {
-              qb.orWhere(`product.details LIKE :${paramName}`, { [paramName]: `%${word}%` });
-            }
-            scoreFormula += `(CASE WHEN product.details LIKE :${paramName} THEN 1 ELSE 0 END)`;
-            if (index < keywords.length - 1) {
-              scoreFormula += ' + ';
-            }
-          });
-        }));
+
+        queryBuilder.andWhere(
+          new Brackets((whereBuilder) => {
+            keywords.forEach((word, index) => {
+              const parameterName = `word_${index}`;
+              const condition = `product.details ILIKE :${parameterName}`;
+              const parameters = { [parameterName]: `%${word}%` };
+
+              if (index === 0) {
+                whereBuilder.where(condition, parameters);
+              } else {
+                whereBuilder.orWhere(condition, parameters);
+              }
+
+              scoreFormula += `(CASE WHEN ${condition} THEN 1 ELSE 0 END)`;
+              if (index < keywords.length - 1) {
+                scoreFormula += ' + ';
+              }
+            });
+          }),
+        );
+
         queryBuilder
           .addSelect(scoreFormula, 'match_score')
           .orderBy('match_score', 'DESC');
       }
     }
-    return await queryBuilder.getMany();
+
+    return queryBuilder.getMany();
   }
-  async findOne(id: number, entityManager: EntityManager | null = null) {
-    const where = { where: { id, deletedAt: IsNull() } };
+
+  async findOne(id: number, entityManager?: EntityManager) {
     if (entityManager) {
-      return entityManager.findOne(Product, { ...where, lock: { mode: 'pessimistic_write' } });
+      return entityManager.findOne(Product, {
+        where: { id, deletedAt: IsNull() },
+        lock: { mode: 'pessimistic_write' },
+      });
     }
-    const product = await this.cacheManager.get<Product>('product' + id);
+
+    const cached = await this.cache.get<Product>(CACHE_KEYS.product(id));
+    if (cached) {
+      return cached;
+    }
+
+    const product = await this.productRepository.findOne({
+      where: { id, deletedAt: IsNull() },
+    });
+
     if (product) {
-      console.log('from cache');
-      return product;
+      await this.cache.set(
+        CACHE_KEYS.product(id),
+        product,
+        this.productTtlSeconds(),
+      );
     }
-    const getProduct = await this.productRepository.findOne(where);
-    const catalogTtl = Number(this.configService.get<string>('CACHE_TTL2')) || 600;
-    await this.cacheManager.set('product' + id, getProduct, catalogTtl * 1000);
-    return getProduct;
+
+    return product;
   }
-  findOneForBuy(id: number, updateProductCountDto: UpdateProductCountPriceDto, entityManager: EntityManager) {
-    if (!updateProductCountDto.count) {
-      throw new NotFoundException()
-    }
-    if (updateProductCountDto.count <= 0) {
-      throw new NotFoundException()
-    }
-    const where = {
+
+  async findAvailableProduct(
+    id: number,
+    quantity: number,
+    entityManager: EntityManager,
+  ) {
+    this.assertPositiveQuantity(quantity);
+
+    return entityManager.findOne(Product, {
       where: {
         id,
-        count: MoreThanOrEqual(updateProductCountDto.count),
+        count: MoreThanOrEqual(quantity),
         deletedAt: IsNull(),
       },
-    };
-    return entityManager.findOne(Product, { ...where, lock: { mode: 'pessimistic_write' } });
+    });
   }
-  async updateForBuy(id: number, updateProductCountDto: UpdateProductCountPriceDto, entityManager: EntityManager) {
-    if (!updateProductCountDto.count) {
-      throw new NotFoundException()
-    }
-    if (updateProductCountDto.count <= 0) {
-      throw new NotFoundException()
-    }
-    const product = await this.findOneForBuy(id, updateProductCountDto, entityManager);
-    console.log(product, updateProductCountDto.count)
-    if (product) {
-      console.log(product.count, updateProductCountDto.count)
-      await this.updateCountAndPrice(id, { count: product.count - updateProductCountDto.count }, entityManager)
-      return product;
-    }
-    else {
-      throw new NotFoundException();
-    }
-  }
-  async updateForReturn(products: { productId: number, productCount: number }[], entityManager: EntityManager) {
-    for (let index = 0; index < products.length; index++) {
-      if (products[index].productCount <= 0) {
-        continue;
+
+  async decreaseStock(items: StockItem[], entityManager: EntityManager) {
+    const normalizedItems = this.normalizeStockItems(items);
+
+    for (const item of normalizedItems) {
+      const product = await this.findOne(item.productId, entityManager);
+
+      if (!product || product.count < item.quantity) {
+        throw new ConflictException(
+          `Insufficient stock for product ${item.productId}`,
+        );
       }
-      const product = await this.findOne(products[index].productId, entityManager);
-      console.log(product)
-      if (product) {
-        console.log(product.count, products[index].productCount)
-        await this.updateCountAndPrice(products[index].productId, { count: product.count + products[index].productCount }, entityManager);
-      }
+
+      await this.updateStock(
+        product.id,
+        product.count - item.quantity,
+        entityManager,
+      );
     }
   }
-  async update(id: number, updateProductDto: UpdateProductDto, user_id: number) {
-    return this.dataSource.transaction(async (entityManager) => {
-      const company = await this.companiesService.findOneByUser(user_id);
+
+  async increaseStock(items: StockItem[], entityManager: EntityManager) {
+    const normalizedItems = this.normalizeStockItems(items);
+
+    for (const item of normalizedItems) {
+      const product = await this.findOne(item.productId, entityManager);
+
+      if (!product) {
+        throw new NotFoundException(
+          `Product ${item.productId} was not found`,
+        );
+      }
+
+      await this.updateStock(
+        product.id,
+        product.count + item.quantity,
+        entityManager,
+      );
+    }
+  }
+
+  async update(id: number, updateProductDto: UpdateProductDto, userId: number) {
+    const result = await this.dataSource.transaction(async (entityManager) => {
+      const company = await this.companiesService.findOneByUser(userId);
+
       if (!company) {
         throw new UnauthorizedException();
       }
-      const product = await this.findOne(id, entityManager)
+
+      const product = await this.findOne(id, entityManager);
       if (!product) {
         throw new NotFoundException();
       }
-      return entityManager.update(Product, { id, company: { id: company.id } }, { ...updateProductDto });
+
+      const updateResult = await entityManager.update(
+        Product,
+        { id, company: { id: company.id } },
+        updateProductDto,
+      );
+
+      if (updateResult.affected !== 1) {
+        throw new ConflictException(
+          'The product was changed by another request',
+        );
+      }
+
+      return entityManager.findOneByOrFail(Product, { id });
     });
+
+    await this.invalidateProductCache(id);
+    await this.invalidateCatalogCache();
+    return result;
   }
-  async updateCountAndPrice(id: number, updateProductCountPriceDto: UpdateProductCountPriceDto, entityManager: EntityManager) {
-    await this.cacheManager.del('product' + id);
-    console.log(updateProductCountPriceDto)
-    return entityManager.update(Product, id, updateProductCountPriceDto);
+
+  async updateCountAndPrice(
+    id: number,
+    updateProductCountPriceDto: UpdateProductCountPriceDto,
+    entityManager: EntityManager,
+  ) {
+    const result = await entityManager.update(
+      Product,
+      id,
+      updateProductCountPriceDto,
+    );
+
+    if (result.affected !== 1) {
+      throw new ConflictException('The product was changed by another request');
+    }
+
+    await this.invalidateProductCache(id);
+    return result;
   }
-  remove(id: number, user_id: number) {
-    return this.dataSource.transaction(async (entityManager) => {
-      const company = await this.companiesService.findOneByUser(user_id);
+
+  async remove(id: number, userId: number) {
+    await this.dataSource.transaction(async (entityManager) => {
+      const company = await this.companiesService.findOneByUser(userId);
+
       if (!company) {
         throw new UnauthorizedException();
       }
-      return entityManager.update(Product, id, { deletedAt: new Date() });
+
+      const result = await entityManager.update(
+        Product,
+        { id, company: { id: company.id } },
+        { deletedAt: new Date() },
+      );
+
+      if (result.affected !== 1) {
+        throw new NotFoundException();
+      }
     });
+
+    await this.invalidateProductCache(id);
+    await this.invalidateCatalogCache();
   }
-  BestSellers() {
-    return this.productRepository.createQueryBuilder('product')
-      .leftJoin('product.carts', 'userproduct')
-      .leftJoin('userproduct.cart', 'cart')
+
+  async invalidateRatingCache() {
+    await this.cache.delete(CACHE_KEYS.bestRating);
+  }
+
+  private async updateStock(
+    id: number,
+    count: number,
+    entityManager: EntityManager,
+  ) {
+    const result = await entityManager.update(Product, { id }, { count });
+
+    if (result.affected !== 1) {
+      throw new ConflictException('The stock was changed by another request');
+    }
+
+    await this.invalidateProductCache(id);
+    await this.cache.delete(CACHE_KEYS.bestSellers);
+  }
+
+  private bestSellersQuery() {
+    return this.productRepository
+      .createQueryBuilder('product')
+      .leftJoin('product.userProducts', 'userProduct')
+      .leftJoin('userProduct.cart', 'cart')
       .leftJoin('cart.confirm', 'confirm')
-      .where('cart.confirmId IS NOT NULL')
-      .where('confirm.status = :status', { status: OrderStatus.COMPLETED })
+      .where('product.deletedAt IS NULL')
+      .andWhere('confirm.status = :status', {
+        status: OrderStatus.COMPLETED,
+      })
       .select([
         'product.id AS id',
         'product.count AS count',
@@ -202,15 +360,18 @@ export class ProductsService {
         'product.photo AS photo',
         'product.details AS details',
       ])
-      .addSelect('SUM(userproduct.count)', 'totalSales')
+      .addSelect('COALESCE(SUM(userProduct.count), 0)', 'totalSales')
       .groupBy('product.id')
       .orderBy('"totalSales"', 'DESC')
       .limit(10)
-      .getRawMany();
+      .getRawMany<Record<string, unknown>>();
   }
-  BestRating() {
-    return this.productRepository.createQueryBuilder('product')
+
+  private bestRatingQuery() {
+    return this.productRepository
+      .createQueryBuilder('product')
       .leftJoin('product.comments', 'comment')
+      .where('product.deletedAt IS NULL')
       .select([
         'product.id AS id',
         'product.count AS count',
@@ -218,10 +379,56 @@ export class ProductsService {
         'product.photo AS photo',
         'product.details AS details',
       ])
-      .addSelect('SUM(comment.rating)', 'totalRate')
+      .addSelect('COALESCE(AVG(comment.rating), 0)', 'averageRating')
+      .addSelect('COUNT(comment.id)', 'ratingsCount')
       .groupBy('product.id')
-      .orderBy('"totalRate"', 'DESC')
+      .orderBy('"averageRating"', 'DESC')
+      .addOrderBy('"ratingsCount"', 'DESC')
       .limit(10)
-      .getRawMany();
+      .getRawMany<Record<string, unknown>>();
+  }
+
+  private normalizeStockItems(items: StockItem[]) {
+    const quantities = new Map<number, number>();
+
+    for (const item of items) {
+      this.assertPositiveQuantity(item.quantity);
+      quantities.set(
+        item.productId,
+        (quantities.get(item.productId) ?? 0) + item.quantity,
+      );
+    }
+
+    return [...quantities.entries()]
+      .map(([productId, quantity]) => ({ productId, quantity }))
+      .sort((left, right) => left.productId - right.productId);
+  }
+
+  private assertPositiveQuantity(quantity: number) {
+    if (!Number.isInteger(quantity) || quantity <= 0) {
+      throw new BadRequestException(
+        'Product quantity must be a positive integer',
+      );
+    }
+  }
+
+  private async invalidateProductCache(id: number) {
+    await this.cache.delete(CACHE_KEYS.product(id));
+  }
+
+  private async invalidateCatalogCache() {
+    await this.cache.delete(CACHE_KEYS.bestSellers, CACHE_KEYS.bestRating);
+  }
+
+  private productTtlSeconds() {
+    return Number(
+      this.configService.get<string>('CACHE_PRODUCT_TTL') ?? 600,
+    );
+  }
+
+  private catalogTtlSeconds() {
+    return Number(
+      this.configService.get<string>('CACHE_CATALOG_TTL') ?? 300,
+    );
   }
 }

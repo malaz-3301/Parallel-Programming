@@ -23,9 +23,4 @@ export class AppController {
   getInstance() {
     return this.appService.getInstance();
   }
-  @AllowAnonymous()
-  @Get('seed')
-  seed() {
-    return this.appService.seed();
-  }
 }

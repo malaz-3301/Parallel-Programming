@@ -3,12 +3,18 @@ import { Job } from 'bullmq';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { UpdateNotificationDto } from './dto/update-notification.dto';
 import { NotificationsService } from './notifications.service';
-import { UsersService } from 'src/users/users.service';
 
 type NotificationJob =
-  | Job<CreateNotificationDto, any, 'create'>
-  | Job<UpdateNotificationDto & { id: number }, any, 'update'>
-  | Job<{ id: number }, any, 'remove'>;
+  | Job<CreateNotificationDto, unknown, 'create'>
+  | Job<UpdateNotificationDto & { id: number }, unknown, 'update'>
+  | Job<{ id: number }, unknown, 'remove'>
+  | Job<{ recipients: number }, unknown, 'sendNotifications'>;
+
+type NotificationBatchJob = Job<
+  { userIds: number[]; data: string },
+  unknown,
+  'send'
+>;
 
 @Processor('notification', { concurrency: 8 })
 export class NotificationConsumer extends WorkerHost {
@@ -16,7 +22,7 @@ export class NotificationConsumer extends WorkerHost {
     super();
   }
 
-  async process(job: NotificationJob): Promise<any> {
+  async process(job: NotificationJob): Promise<unknown> {
     switch (job.name) {
       case 'create':
         return this.notificationsService.create(job.data);
@@ -24,6 +30,8 @@ export class NotificationConsumer extends WorkerHost {
         return this.notificationsService.update(job.data.id, job.data);
       case 'remove':
         return this.notificationsService.remove(job.data.id);
+      case 'sendNotifications':
+        return { processed: true, recipients: job.data.recipients };
       default:
         return null;
     }
@@ -32,29 +40,25 @@ export class NotificationConsumer extends WorkerHost {
 
 @Processor('steps', { concurrency: 8 })
 export class StepsConsumer extends WorkerHost {
-  constructor(
-    private readonly notificationsService: NotificationsService,
-    private readonly usersService: UsersService,
-  ) {
+  constructor(private readonly notificationsService: NotificationsService) {
     super();
   }
 
-  async process(job: Job<any, any, string>): Promise<any> {
+  async process(job: NotificationBatchJob): Promise<unknown> {
     if (job.name !== 'send') {
       return null;
     }
 
-    for (let index = job.data.usersIds.min; index <= job.data.usersIds.max; index++) {
-      const user = await this.usersService.findOne(index);
-
-      if (user) {
-        await this.notificationsService.create({ userId: user.id, data: job.data.data });
-      }
+    for (const userId of job.data.userIds) {
+      await this.notificationsService.create({
+        userId,
+        data: job.data.data,
+      });
     }
 
     return {
       processed: true,
-      range: `${job.data.usersIds.min}-${job.data.usersIds.max}`,
+      recipients: job.data.userIds.length,
     };
   }
 }

@@ -1,63 +1,128 @@
-import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { InjectFlowProducer } from '@nestjs/bullmq';
+import { InjectRepository } from '@nestjs/typeorm';
+import { FlowChildJob, FlowProducer } from 'bullmq';
+import { IsNull, Repository } from 'typeorm';
+import { UsersService } from 'src/users/users.service';
+import { CreateNotificationAllUsersDto } from './dto/create-notification-all-users.dto';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { UpdateNotificationDto } from './dto/update-notification.dto';
 import { Notification } from './entities/notification.entity';
-import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, IsNull, Repository } from 'typeorm';
-import { UsersService } from 'src/users/users.service';
-import { InjectFlowProducer } from '@nestjs/bullmq';
-import { FlowChildJob, FlowProducer } from 'bullmq';
-import { CreateNotificationAllUsersDto } from './dto/create-notification-all-users.dto';
+
+const NOTIFICATION_BATCH_SIZE = 100;
 
 @Injectable()
 export class NotificationsService {
-  constructor(@InjectRepository(Notification) private notificationRepository: Repository<Notification>, private dataSource: DataSource, private usersService: UsersService, @InjectFlowProducer('sendNotificationForAllUser') private notificationQueue: FlowProducer) { }
-  create(createnotificationDto: CreateNotificationDto) {
-    const notification = this.notificationRepository.create({ ...createnotificationDto, user: { id: createnotificationDto.userId } });
-    return this.notificationRepository.save(notification)
+  constructor(
+    @InjectRepository(Notification)
+    private readonly notificationRepository: Repository<Notification>,
+    private readonly usersService: UsersService,
+    @InjectFlowProducer('sendNotificationForAllUser')
+    private readonly notificationFlowProducer: FlowProducer,
+  ) {}
+
+  create(createNotificationDto: CreateNotificationDto) {
+    const notification = this.notificationRepository.create({
+      ...createNotificationDto,
+      user: { id: createNotificationDto.userId },
+    });
+
+    return this.notificationRepository.save(notification);
   }
-  async sendNotificationForAllUser(createNotificationAllUsersDto: CreateNotificationAllUsersDto) {
-    const users = await this.usersService.finOneForNotifications();
-    if (!users) {
-      throw new NotFoundException();
-    }
-    const children: FlowChildJob[] = []
-    for (let usersCount = 1; usersCount <= users.id; usersCount += 1) {
-      children.push({ name: 'send', queueName: 'steps', data: { usersIds: { min: usersCount, max: usersCount }, data: createNotificationAllUsersDto.data }, opts: { failParentOnFailure: false } })
+
+  async sendNotificationForAllUser(
+    createNotificationAllUsersDto: CreateNotificationAllUsersDto,
+  ) {
+    const users = await this.usersService.findIdsForNotifications();
+
+    if (!users.length) {
+      throw new NotFoundException('No notification recipients were found');
     }
 
-    await this.notificationQueue.add({ name: 'sendNotifications', queueName: 'notifications', children })
-    return
+    const children: FlowChildJob[] = [];
+    for (let index = 0; index < users.length; index += NOTIFICATION_BATCH_SIZE) {
+      children.push({
+        name: 'send',
+        queueName: 'steps',
+        data: {
+          userIds: users
+            .slice(index, index + NOTIFICATION_BATCH_SIZE)
+            .map((user) => user.id),
+          data: createNotificationAllUsersDto.data,
+        },
+        opts: { failParentOnFailure: false },
+      });
+    }
+
+    const flow = await this.notificationFlowProducer.add({
+      name: 'sendNotifications',
+      queueName: 'notification',
+      data: { recipients: users.length },
+      children,
+    });
+
+    return {
+      status: 'queued',
+      jobId: flow.job.id,
+      recipients: users.length,
+      batches: children.length,
+    };
   }
 
   findAll() {
-    return this.notificationRepository.find()
-  }
-  findAllForUser(user_id: number) {
-    return this.notificationRepository.find({ where: { user: { id: user_id } } })
-  }
-  async findOneForAdmin(id: number) {
-    return this.notificationRepository.findOne({ where: { id } })
-  }
-  async findOne(id: number, user_id: number) {
-    const where = { where: { user: { id: user_id }, id } }
-    const notification = await this.notificationRepository.findOne(where)
-    await this.notificationRepository.update({ id: notification!.id, readAt: IsNull() }, { readAt: new Date() })
-    return notification
+    return this.notificationRepository.find();
   }
 
-  async update(id: number, updatenotificationDto: UpdateNotificationDto) {
-    const notification = await this.findOneForAdmin(id)
-    if (notification && !notification.readAt) {
-      return this.notificationRepository.update(id, updatenotificationDto)
+  findAllForUser(userId: number) {
+    return this.notificationRepository.find({ where: { user: { id: userId } } });
+  }
+
+  findOneForAdmin(id: number) {
+    return this.notificationRepository.findOne({ where: { id } });
+  }
+
+  async findOne(id: number, userId: number) {
+    const notification = await this.notificationRepository.findOne({
+      where: { user: { id: userId }, id },
+    });
+
+    if (!notification) {
+      throw new NotFoundException();
     }
-    throw new UnauthorizedException();
+
+    if (!notification.readAt) {
+      await this.notificationRepository.update(
+        { id: notification.id, readAt: IsNull() },
+        { readAt: new Date() },
+      );
+    }
+
+    return notification;
   }
 
-  removeForUser(id: number, user_id: number) {
-    return this.notificationRepository.delete({ id, user: { id: user_id } });
+  async update(id: number, updateNotificationDto: UpdateNotificationDto) {
+    const notification = await this.findOneForAdmin(id);
+
+    if (!notification) {
+      throw new NotFoundException();
+    }
+
+    if (notification.readAt) {
+      throw new UnauthorizedException('A read notification cannot be edited');
+    }
+
+    return this.notificationRepository.update(id, updateNotificationDto);
   }
-  remove(id: number,) {
+
+  removeForUser(id: number, userId: number) {
+    return this.notificationRepository.delete({ id, user: { id: userId } });
+  }
+
+  remove(id: number) {
     return this.notificationRepository.delete(id);
   }
 }

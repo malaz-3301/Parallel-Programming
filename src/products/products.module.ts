@@ -1,15 +1,11 @@
-import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
+import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CompaniesModule } from 'src/companies/companies.module';
 import { Product } from './entities/product.entity';
 import { ProductConsumer } from './products.process';
 import { ProductsController } from './products.controller';
 import { ProductsService } from './products.service';
-import { ConfirmsModule } from 'src/confirms/confirms.module';
-import { forwardRef } from '@nestjs/common';
-import { UserProduct } from 'src/user-products/entities/user-product.entity';
-import { UserProductsModule } from 'src/user-products/user-products.module';
 
 @Module({
   imports: [

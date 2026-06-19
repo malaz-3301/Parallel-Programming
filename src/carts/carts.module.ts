@@ -1,7 +1,6 @@
-import { Module, forwardRef } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
+import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { UsersModule } from 'src/users/users.module';
 import { UserProductsModule } from 'src/user-products/user-products.module';
 import { CartsController } from './carts.controller';
 import { CartConsumer } from './carts.processor';
@@ -11,8 +10,7 @@ import { Cart } from './entities/cart.entity';
 @Module({
   imports: [
     TypeOrmModule.forFeature([Cart]),
-    forwardRef(() => UserProductsModule),
-    forwardRef(() => UsersModule),
+    UserProductsModule,
     BullModule.registerQueue({
       name: 'cart',
       defaultJobOptions: {
@@ -27,4 +25,4 @@ import { Cart } from './entities/cart.entity';
   providers: [CartsService, CartConsumer],
   exports: [CartsService],
 })
-export class CartsModule { }
+export class CartsModule {}

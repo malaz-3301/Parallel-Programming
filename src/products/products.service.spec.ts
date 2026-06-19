@@ -1,68 +1,97 @@
-
-import { Test, TestingModule } from '@nestjs/testing';
+import { ConflictException } from '@nestjs/common';
 import { ProductsService } from './products.service';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { Product } from './entities/product.entity';
-import { DataSource } from 'typeorm';
-import { execSync } from 'child_process';
-import * as path from 'path';
-describe('ProductsService (integration)', () => {
+
+const product = {
+  id: 1,
+  count: 10,
+  price: 25,
+  photo: 'product.jpg',
+  details: 'Test product',
+  deletedAt: null,
+};
+
+describe('ProductsService', () => {
   let service: ProductsService;
-  let dataSource: DataSource;
-  beforeAll(async () => {
-    const scriptPath = path.resolve(__dirname, '../../scripts/reset-db.ps1');
-    try {
-      execSync(`powershell -ExecutionPolicy Bypass -File "${scriptPath}"`, { stdio: 'inherit' });
-    } catch (e) {
-      console.error('Database reset failed', e);
-      throw e;
-    }
-    const module: TestingModule = await Test.createTestingModule({
-      imports: [
-        TypeOrmModule.forRoot({
-          type: 'postgres',
-          host: '127.0.0.1',
-          port: 5432,
-          username: 'your_user',
-          password: 'your_password',
-          database: 'your_database',
-          entities: [Product],
-          synchronize: false,
-        }),
-        TypeOrmModule.forFeature([Product]),
-      ],
-      providers: [ProductsService],
-    }).compile();
-    service = module.get<ProductsService>(ProductsService);
-    dataSource = module.get<DataSource>(DataSource);
+  let productRepository: Record<string, jest.Mock>;
+  let dataSource: Record<string, jest.Mock>;
+  let companiesService: Record<string, jest.Mock>;
+  let cache: Record<string, jest.Mock>;
+  let configService: Record<string, jest.Mock>;
+
+  beforeEach(() => {
+    productRepository = {
+      findOne: jest.fn(),
+      find: jest.fn(),
+      create: jest.fn(),
+      save: jest.fn(),
+      createQueryBuilder: jest.fn(),
+    };
+    dataSource = {
+      transaction: jest.fn(),
+    };
+    companiesService = {
+      findOneByUser: jest.fn(),
+    };
+    cache = {
+      get: jest.fn(),
+      set: jest.fn(),
+      delete: jest.fn(),
+    };
+    configService = {
+      get: jest.fn(),
+    };
+
+    service = new ProductsService(
+      productRepository as any,
+      dataSource as any,
+      companiesService as any,
+      cache as any,
+      configService as any,
+    );
   });
-  afterAll(async () => {
-    await dataSource.destroy();
+
+  it('returns a cached product without querying PostgreSQL', async () => {
+    cache.get.mockResolvedValue(product);
+
+    await expect(service.findOne(product.id)).resolves.toEqual(product);
+    expect(productRepository.findOne).not.toHaveBeenCalled();
   });
-  it('should create a product and roll back on error', async () => {
-    await dataSource.manager.transaction(async (manager) => {
-      const createDto = { name: 'Test Product', price: 10, count: 5 } as any;
-      const product = await service.create(createDto, 1);
-      expect(product.id).toBeDefined();
-      try {
-        await manager.query('SELECT 1/0');
-      } catch (_) {
-        throw new Error('Intentional error to test rollback');
-      }
-    }).catch(() => {
-    });
-    const all = await service.findAll();
-    expect(all).toHaveLength(0);
+
+  it('decreases stock while holding a database lock', async () => {
+    const entityManager = {
+      findOne: jest.fn().mockResolvedValue(product),
+      update: jest.fn().mockResolvedValue({ affected: 1 }),
+    };
+
+    await service.decreaseStock(
+      [{ productId: product.id, quantity: 3 }],
+      entityManager as any,
+    );
+
+    expect(entityManager.findOne).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ lock: { mode: 'pessimistic_write' } }),
+    );
+    expect(entityManager.update).toHaveBeenCalledWith(
+      expect.anything(),
+      { id: product.id },
+      { count: 7 },
+    );
+    expect(cache.delete).toHaveBeenCalled();
   });
-  it('should keep data consistent after multiple successful operations', async () => {
-    const createDto1 = { name: 'Prod A', price: 20, count: 10 } as any;
-    const createDto2 = { name: 'Prod B', price: 30, count: 15 } as any;
-    await service.create(createDto1, 1);
-    await service.create(createDto2, 1);
-    const list = await service.findAll();
-    expect(list).toHaveLength(2);
-    const ids = list.map((p) => p.name);
-    expect(ids).toContain('Prod A');
-    expect(ids).toContain('Prod B');
+
+  it('rejects checkout when stock is insufficient', async () => {
+    const entityManager = {
+      findOne: jest.fn().mockResolvedValue({ ...product, count: 1 }),
+      update: jest.fn(),
+    };
+
+    await expect(
+      service.decreaseStock(
+        [{ productId: product.id, quantity: 2 }],
+        entityManager as any,
+      ),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(entityManager.update).not.toHaveBeenCalled();
   });
 });
