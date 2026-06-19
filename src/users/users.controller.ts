@@ -10,17 +10,17 @@ import {
 } from '@nestjs/common';
 import { Queue } from 'bullmq';
 import { Roles } from 'src/auth/utils/roles.decorator';
-import { UserType } from './utils/user-type';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { JobType } from './users.process';
+import { UserJob } from './users.process';
 import { UsersService } from './users.service';
+import { UserType } from './utils/user-type';
 
 @Controller('users')
 export class UsersController {
   constructor(
     private readonly usersService: UsersService,
-    @InjectQueue('user') private readonly userQueue: Queue<JobType>,
+    @InjectQueue('user') private readonly userQueue: Queue<UserJob>,
   ) {}
 
   @Roles(UserType.ADMIN)

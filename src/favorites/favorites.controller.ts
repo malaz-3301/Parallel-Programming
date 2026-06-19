@@ -12,13 +12,13 @@ import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { JwtPayload } from 'src/auth/types/jwt-payload.type';
 import { CreateFavoriteDto } from './dto/create-favorite.dto';
 import { FavoritesService } from './favorites.service';
-import { JobType } from './favorites.process';
+import { FavoriteJob } from './favorites.process';
 
 @Controller('favorites')
 export class FavoritesController {
   constructor(
     private readonly favoritesService: FavoritesService,
-    @InjectQueue('favorite') private readonly favoriteQueue: Queue<JobType>,
+    @InjectQueue('favorite') private readonly favoriteQueue: Queue<FavoriteJob>,
   ) {}
 
   @Post()

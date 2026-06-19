@@ -1,28 +1,30 @@
-
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
-import { UsersService } from 'src/users/users.service';
-import { setTimeout } from 'timers/promises';
-import { using } from 'rxjs';
 import { CompaniesService } from './companies.service';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
-export type JobType = Job<CreateCompanyDto & { user_id: number }, any, 'create'> | Job<UpdateCompanyDto & { id: number }, any, 'update'> | Job<{ id: number }, any, 'remove'>
-@Processor('company', { concurrency: 64 })
-export class CompnayConsumer extends WorkerHost {
-    constructor(private compnaysService: CompaniesService) { super() }
-    async process(job: JobType): Promise<any> {
-        console.log("dkfjklajl")
-        switch (job.name) {
-            case 'create': {
-                return await this.compnaysService.create({ ...job.data }, job.data.user_id)
-            }
-            case 'update': {
-                return await this.compnaysService.update(job.data.id, { ...job.data },)
-            }
-            case 'remove': {
-                return await this.compnaysService.remove(job.data.id,)
-            }
-        }
+
+export type CompanyJob =
+  | Job<CreateCompanyDto & { user_id: number }, unknown, 'create'>
+  | Job<UpdateCompanyDto & { id: number }, unknown, 'update'>
+  | Job<{ id: number }, unknown, 'remove'>;
+
+@Processor('company', { concurrency: 8 })
+export class CompanyConsumer extends WorkerHost {
+  constructor(private readonly companiesService: CompaniesService) {
+    super();
+  }
+
+  process(job: CompanyJob): Promise<unknown> {
+    switch (job.name) {
+      case 'create':
+        return this.companiesService.create(job.data, job.data.user_id);
+      case 'update':
+        return this.companiesService.update(job.data.id, job.data);
+      case 'remove':
+        return this.companiesService.remove(job.data.id);
+      default:
+        return Promise.resolve(null);
     }
+  }
 }

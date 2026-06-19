@@ -1,24 +1,18 @@
 import { Controller, Get } from '@nestjs/common';
+import { Public } from './public.module';
 import { AppService } from './app.service';
-import { Public as AllowAnonymous } from './public.module';
 
 @Controller()
 export class AppController {
   constructor(private readonly appService: AppService) {}
 
-  @AllowAnonymous()
-  @Get()
-  getHello(): string {
-    return this.appService.getHello();
-  }
-
-  @AllowAnonymous()
+  @Public()
   @Get('health')
   getHealth() {
     return this.appService.getHealth();
   }
 
-  @AllowAnonymous()
+  @Public()
   @Get('instance')
   getInstance() {
     return this.appService.getInstance();

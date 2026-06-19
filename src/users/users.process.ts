@@ -1,27 +1,30 @@
-
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
-import { UsersService } from 'src/users/users.service';
-import { setTimeout } from 'timers/promises';
-import { using } from 'rxjs';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-export type JobType = Job<CreateUserDto, any, 'create'> | Job<UpdateUserDto & { id: number }, any, 'update'> | Job<{ id: number }, any, 'remove'>
-@Processor('user', { concurrency: 64 })
+import { UsersService } from './users.service';
+
+export type UserJob =
+  | Job<CreateUserDto, unknown, 'create'>
+  | Job<UpdateUserDto & { id: number }, unknown, 'update'>
+  | Job<{ id: number }, unknown, 'remove'>;
+
+@Processor('user', { concurrency: 8 })
 export class UserConsumer extends WorkerHost {
-    constructor(private usresService: UsersService) { super() }
-    async process(job: JobType): Promise<any> {
-        console.log(job)
-        switch (job.name) {
-            case 'create': {
-                return await this.usresService.createUser({ ...job.data })
-            }
-            case 'update': {
-                return await this.usresService.update(job.data.id, { ...job.data })
-            }
-            case 'remove': {
-                return await this.usresService.remove(job.data.id)
-            }
-        }
+  constructor(private readonly usersService: UsersService) {
+    super();
+  }
+
+  process(job: UserJob): Promise<unknown> {
+    switch (job.name) {
+      case 'create':
+        return this.usersService.createUser(job.data);
+      case 'update':
+        return this.usersService.update(job.data.id, job.data);
+      case 'remove':
+        return this.usersService.remove(job.data.id);
+      default:
+        return Promise.resolve(null);
     }
+  }
 }

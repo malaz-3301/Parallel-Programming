@@ -15,7 +15,7 @@ import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { JwtPayload } from 'src/auth/types/jwt-payload.type';
 import { Roles } from 'src/auth/utils/roles.decorator';
 import { UserType } from 'src/users/utils/user-type';
-import { JobType } from './carts.processor';
+import { CartJob } from './carts.processor';
 import { CartsService } from './carts.service';
 import { AddToCart } from './dto/add-to-cart';
 import { RemoveFromCart } from './dto/remove-from-cart';
@@ -27,7 +27,7 @@ export class CartsController {
   constructor(
     private readonly cartsService: CartsService,
     private readonly configService: ConfigService,
-    @InjectQueue('cart') private readonly cartQueue: Queue<JobType>,
+    @InjectQueue('cart') private readonly cartQueue: Queue<CartJob>,
   ) {
     this.maxWaitingJobs = Number(
       this.configService.get<string>('CART_QUEUE_MAX_WAITING') ?? 5000,

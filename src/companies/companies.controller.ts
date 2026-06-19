@@ -14,15 +14,15 @@ import { JwtPayload } from 'src/auth/types/jwt-payload.type';
 import { Roles } from 'src/auth/utils/roles.decorator';
 import { UserType } from 'src/users/utils/user-type';
 import { CompaniesService } from './companies.service';
+import { CompanyJob } from './companies.process';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
-import { JobType } from './companies.process';
 
 @Controller('companies')
 export class CompaniesController {
   constructor(
     private readonly companiesService: CompaniesService,
-    @InjectQueue('company') private readonly companyQueue: Queue<JobType>,
+    @InjectQueue('company') private readonly companyQueue: Queue<CompanyJob>,
   ) {}
 
   @Roles(UserType.ADMIN)

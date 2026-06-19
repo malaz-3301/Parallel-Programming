@@ -12,15 +12,15 @@ import { Queue } from 'bullmq';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { JwtPayload } from 'src/auth/types/jwt-payload.type';
 import { CommentsService } from './comments.service';
+import { CommentJob } from './comments.process';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { UpdateCommentDto } from './dto/update-comment.dto';
-import { JobType } from './comments.process';
 
 @Controller('comments')
 export class CommentsController {
   constructor(
     private readonly commentsService: CommentsService,
-    @InjectQueue('comment') private readonly commentQueue: Queue<JobType>,
+    @InjectQueue('comment') private readonly commentQueue: Queue<CommentJob>,
   ) {}
 
   @Post()
