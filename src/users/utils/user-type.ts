@@ -1,6 +1,6 @@
 export enum UserType {
-    USER = 'user',
-    ADMIN = 'admin',
-    BANNED = 'banned',
-    SUPERADMIN = 'superamin'
+  USER = 'user',
+  ADMIN = 'admin',
+  BANNED = 'banned',
+  SUPERADMIN = 'superadmin',
 }

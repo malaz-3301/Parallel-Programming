@@ -1,12 +1,17 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
-import { User } from 'src/users/entities/user.entity';
+import { UsersService } from 'src/users/users.service';
+import { UserType } from 'src/users/utils/user-type';
+import { JwtPayload } from '../types/jwt-payload.type';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor(configService: ConfigService) {
+  constructor(
+    configService: ConfigService,
+    private readonly usersService: UsersService,
+  ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
@@ -17,7 +22,17 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  async validate(payload: User) {
-    return { id: payload.id, phone: payload.phone, userType: payload.userType };
+  async validate(payload: JwtPayload): Promise<JwtPayload> {
+    const user = await this.usersService.findOneById(payload.id);
+
+    if (!user || user.userType === UserType.BANNED) {
+      throw new UnauthorizedException('The account is unavailable');
+    }
+
+    return {
+      id: user.id,
+      phone: user.phone,
+      userType: user.userType,
+    };
   }
 }

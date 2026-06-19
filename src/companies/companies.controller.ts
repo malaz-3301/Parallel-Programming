@@ -1,41 +1,83 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Request, UseGuards } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bullmq';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+} from '@nestjs/common';
+import { Queue } from 'bullmq';
+import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
+import { JwtPayload } from 'src/auth/types/jwt-payload.type';
+import { Roles } from 'src/auth/utils/roles.decorator';
+import { UserType } from 'src/users/utils/user-type';
 import { CompaniesService } from './companies.service';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
-import { Roles } from 'src/auth/utils/roles.decorator';
-import { User } from 'src/users/entities/user.entity';
-import { InjectQueue } from '@nestjs/bullmq';
-import { Queue } from 'bullmq';
 import { JobType } from './companies.process';
-import { RolesGuard } from 'src/auth/utils/roles.guard';
-@UseGuards(RolesGuard)
+
 @Controller('companies')
 export class CompaniesController {
-  constructor(private readonly companiesService: CompaniesService, @InjectQueue('company') private companyQueue: Queue<JobType>) { }
-  @Roles(['admin'])
+  constructor(
+    private readonly companiesService: CompaniesService,
+    @InjectQueue('company') private readonly companyQueue: Queue<JobType>,
+  ) {}
+
+  @Roles(UserType.ADMIN)
   @Post()
-  async create(@Body() createCompanyDto: CreateCompanyDto, @Request() req: { user: User }) {
-    await this.companyQueue.add('create', { ...createCompanyDto, user_id: req.user.id });
+  async create(
+    @Body() createCompanyDto: CreateCompanyDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    const job = await this.companyQueue.add('create', {
+      ...createCompanyDto,
+      user_id: user.id,
+    });
+    return { status: 'queued', jobId: job.id };
   }
+
   @Get()
   findAll() {
     return this.companiesService.findAll();
   }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.companiesService.findOne(+id);
   }
-  @Roles(['admin'])
+
+  @Roles(UserType.ADMIN)
   @Patch('update/:id')
-  async update(@Param('id') id: string, @Body() updateCompanyDto: UpdateCompanyDto,) {
-    await this.companyQueue.add('create', { ...updateCompanyDto, id: +id });
+  async update(
+    @Param('id') id: string,
+    @Body() updateCompanyDto: UpdateCompanyDto,
+  ) {
+    const job = await this.companyQueue.add('update', {
+      ...updateCompanyDto,
+      id: +id,
+    });
+    return { status: 'queued', jobId: job.id };
   }
+
   @Patch(':id')
-  updateForUser(@Param('id') id: string, @Body() updateCompanyDto: UpdateCompanyDto, @Request() req: { user: User }) {
-    return this.companiesService.updateForUser(+id, updateCompanyDto, req.user.id);
+  updateForUser(
+    @Param('id') id: string,
+    @Body() updateCompanyDto: UpdateCompanyDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.companiesService.updateForUser(
+      +id,
+      updateCompanyDto,
+      user.id,
+    );
   }
+
+  @Roles(UserType.ADMIN)
   @Delete(':id')
   async remove(@Param('id') id: string) {
-    await this.companyQueue.add('create', { id: +id });
+    const job = await this.companyQueue.add('remove', { id: +id });
+    return { status: 'queued', jobId: job.id };
   }
 }

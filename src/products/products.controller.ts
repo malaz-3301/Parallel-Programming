@@ -1,17 +1,26 @@
 import { InjectQueue } from '@nestjs/bullmq';
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Request, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { Queue } from 'bullmq';
+import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
+import { JwtPayload } from 'src/auth/types/jwt-payload.type';
 import { Roles } from 'src/auth/utils/roles.decorator';
-import { RolesGuard } from 'src/auth/utils/roles.guard';
 import { Public } from 'src/public.module';
-import { User } from 'src/users/entities/user.entity';
+import { UserType } from 'src/users/utils/user-type';
 import { CreateProductDto } from './dto/create-product.dto';
 import { FilterProductDto } from './dto/filter-product-dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { JobType } from './products.process';
 import { ProductsService } from './products.service';
 
-@UseGuards(RolesGuard)
 @Controller('products')
 export class ProductsController {
   constructor(
@@ -20,12 +29,18 @@ export class ProductsController {
   ) {}
 
   @Post()
-  async create(@Body() dto: CreateProductDto, @Request() req: { user: User }) {
-    const job = await this.productQueue.add('create', { ...dto, user_id: req.user.id });
+  async create(
+    @Body() dto: CreateProductDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    const job = await this.productQueue.add('create', {
+      ...dto,
+      user_id: user.id,
+    });
     return { status: 'queued', jobId: job.id };
   }
 
-  @Roles(['admin'])
+  @Roles(UserType.ADMIN)
   @Get('all')
   findAllWithDeleted() {
     return this.productsService.findAllWithDeleted();
@@ -59,15 +74,25 @@ export class ProductsController {
   async update(
     @Param('id') id: string,
     @Body() dto: UpdateProductDto,
-    @Request() req: { user: User },
+    @CurrentUser() user: JwtPayload,
   ) {
-    const job = await this.productQueue.add('update', { ...dto, id: +id, user_id: req.user.id });
+    const job = await this.productQueue.add('update', {
+      ...dto,
+      id: +id,
+      user_id: user.id,
+    });
     return { status: 'queued', jobId: job.id };
   }
 
   @Delete(':id')
-  async remove(@Param('id') id: string, @Request() req: { user: User }) {
-    const job = await this.productQueue.add('remove', { id: +id, user_id: req.user.id });
+  async remove(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    const job = await this.productQueue.add('remove', {
+      id: +id,
+      user_id: user.id,
+    });
     return { status: 'queued', jobId: job.id };
   }
 }

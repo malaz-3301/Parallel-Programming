@@ -4,6 +4,8 @@ import { comparePasswords, encodePassword } from 'src/auth/utils/bcrypt';
 import { CreateUserDto } from 'src/users/dto/create-user.dto';
 import { User } from 'src/users/entities/user.entity';
 import { UsersService } from 'src/users/users.service';
+import { UserType } from 'src/users/utils/user-type';
+import { JwtPayload } from '../../types/jwt-payload.type';
 
 @Injectable()
 export class AuthService {
@@ -15,7 +17,11 @@ export class AuthService {
   async validateUser(phone: string, password: string) {
     const user = await this.usersService.findOneByPhone(phone);
 
-    if (!user || !comparePasswords(password, user.password)) {
+    if (
+      !user ||
+      user.userType === UserType.BANNED ||
+      !comparePasswords(password, user.password)
+    ) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
@@ -23,10 +29,10 @@ export class AuthService {
     return safeUser;
   }
 
-  login(user: User) {
-    const payload = {
-      phone: user.phone,
+  login(user: Pick<User, 'id' | 'phone' | 'userType'>) {
+    const payload: JwtPayload = {
       id: user.id,
+      phone: user.phone,
       userType: user.userType,
     };
 

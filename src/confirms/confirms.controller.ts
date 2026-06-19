@@ -7,19 +7,17 @@ import {
   Param,
   Patch,
   Post,
-  Request,
-  UseGuards,
 } from '@nestjs/common';
 import { Queue } from 'bullmq';
+import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
+import { JwtPayload } from 'src/auth/types/jwt-payload.type';
 import { Roles } from 'src/auth/utils/roles.decorator';
-import { RolesGuard } from 'src/auth/utils/roles.guard';
-import { User } from 'src/users/entities/user.entity';
+import { UserType } from 'src/users/utils/user-type';
 import { JobType } from './confirms.process';
 import { ConfirmsService } from './confirms.service';
 import { CreateConfirmDto } from './dto/create-confirm.dto';
 import { UpdateConfirmDto } from './dto/update-confirm.dto';
 
-@UseGuards(RolesGuard)
 @Controller('confirms')
 export class ConfirmsController {
   constructor(
@@ -28,27 +26,31 @@ export class ConfirmsController {
   ) {}
 
   @Post()
-  create(@Body() createConfirmDto: CreateConfirmDto, @Request() req: { user: User }) {
-    // Checkout must return the final result to the caller and must not place
-    // sensitive payment input inside Redis-backed queue storage.
-    return this.confirmsService.create(createConfirmDto, req.user.id);
+  create(
+    @Body() createConfirmDto: CreateConfirmDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.confirmsService.create(createConfirmDto, user.id);
   }
 
-  @Roles(['admin'])
+  @Roles(UserType.ADMIN)
   @Get()
   findAll() {
     return this.confirmsService.findAll();
   }
 
-  @Roles(['admin'])
+  @Roles(UserType.ADMIN)
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.confirmsService.findOne(+id);
   }
 
-  @Roles(['admin'])
+  @Roles(UserType.ADMIN)
   @Patch(':id')
-  async update(@Param('id') id: string, @Body() updateConfirmDto: UpdateConfirmDto) {
+  async update(
+    @Param('id') id: string,
+    @Body() updateConfirmDto: UpdateConfirmDto,
+  ) {
     const job = await this.confirmQueue.add('update', {
       ...updateConfirmDto,
       id: +id,
@@ -58,10 +60,13 @@ export class ConfirmsController {
   }
 
   @Delete(':id')
-  async remove(@Param('id') id: string, @Request() req: { user: User }) {
+  async remove(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
     const job = await this.confirmQueue.add('remove', {
       id: +id,
-      user_id: req.user.id,
+      user_id: user.id,
     });
 
     return { status: 'queued', jobId: job.id };

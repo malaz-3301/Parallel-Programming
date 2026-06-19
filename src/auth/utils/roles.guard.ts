@@ -1,29 +1,43 @@
-import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { Roles } from './roles.decorator';
+import { JwtPayload } from '../types/jwt-payload.type';
+import { ROLES_KEY } from './roles.decorator';
 import { UserType } from 'src/users/utils/user-type';
 
 @Injectable()
 export class RolesGuard implements CanActivate {
-    constructor(private reflector: Reflector) { }
+  constructor(private readonly reflector: Reflector) {}
 
-    canActivate(context: ExecutionContext): boolean {
-        const roles = this.reflector.get(Roles, context.getHandler());
-        if (!roles) {
-            return true;
-        }
-        const request = context.switchToHttp().getRequest();
-        const user = request.user;
-        return this.matchRoles(roles, user.userType);
+  canActivate(context: ExecutionContext): boolean {
+    const requiredRoles = this.reflector.getAllAndOverride<UserType[]>(
+      ROLES_KEY,
+      [context.getHandler(), context.getClass()],
+    );
+
+    if (!requiredRoles?.length) {
+      return true;
     }
-    matchRoles(roles, userRole) {
-        if (userRole == UserType.BANNED) {
-            return false
-        }
-        else {
-            return roles.some(role => userRole.includes(role))
-        }
+
+    const request = context.switchToHttp().getRequest<{ user?: JwtPayload }>();
+    const user = request.user;
+
+    if (!user) {
+      throw new UnauthorizedException();
     }
+
+    if (
+      user.userType !== UserType.SUPERADMIN &&
+      !requiredRoles.includes(user.userType)
+    ) {
+      throw new ForbiddenException('You do not have permission to access this resource');
+    }
+
+    return true;
+  }
 }
-
-

@@ -2,7 +2,7 @@ import { ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/com
 import { Reflector } from '@nestjs/core';
 import { AuthGuard } from '@nestjs/passport';
 import { IS_PUBLIC_KEY } from 'src/public.module';
-import { UserType } from 'src/users/utils/user-type';
+import { JwtPayload } from '../types/jwt-payload.type';
 
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') {
@@ -23,13 +23,9 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     return super.canActivate(context);
   }
 
-  override handleRequest<TUser = any>(err: any, user: any): TUser {
+  override handleRequest<TUser = JwtPayload>(err: unknown, user: TUser): TUser {
     if (err || !user) {
-      throw err || new UnauthorizedException();
-    }
-
-    if (user.userType === UserType.BANNED) {
-      throw new UnauthorizedException();
+      throw err || new UnauthorizedException('A valid access token is required');
     }
 
     return user;

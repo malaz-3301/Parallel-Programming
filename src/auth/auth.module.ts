@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
-import { JwtModule, JwtModuleOptions } from '@nestjs/jwt';
-import { PassportModule } from '@nestjs/passport';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
+import { JwtModule, JwtModuleOptions } from '@nestjs/jwt';
+import { PassportModule } from '@nestjs/passport';
 import { UsersModule } from '../users/users.module';
 import { AuthController } from './controllers/auth/auth.controller';
 import { AuthService } from './services/auth/auth.service';
@@ -19,8 +19,11 @@ import { RolesGuard } from './utils/roles.guard';
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: async (configService: ConfigService): Promise<JwtModuleOptions> => {
-        const expiresIn = configService.get<string>('JWT_EXPIRES_IN') ?? '1h';
+      useFactory: async (
+        configService: ConfigService,
+      ): Promise<JwtModuleOptions> => {
+        const expiresIn =
+          configService.get<string>('JWT_EXPIRES_IN') ?? '1h';
 
         return {
           global: true,
@@ -29,7 +32,10 @@ import { RolesGuard } from './utils/roles.guard';
             configService.get<string>('SECRET') ??
             'development-secret',
           signOptions: {
-            expiresIn: expiresIn as NonNullable<JwtModuleOptions['signOptions']>['expiresIn'],
+            expiresIn:
+              expiresIn as NonNullable<
+                JwtModuleOptions['signOptions']
+              >['expiresIn'],
           },
         };
       },
@@ -40,6 +46,10 @@ import { RolesGuard } from './utils/roles.guard';
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
     },
     AuthService,
     JwtStrategy,

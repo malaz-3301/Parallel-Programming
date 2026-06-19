@@ -8,20 +8,18 @@ import {
   HttpStatus,
   Patch,
   Post,
-  Request,
-  UseGuards,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Queue } from 'bullmq';
+import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
+import { JwtPayload } from 'src/auth/types/jwt-payload.type';
 import { Roles } from 'src/auth/utils/roles.decorator';
-import { RolesGuard } from 'src/auth/utils/roles.guard';
-import { User } from 'src/users/entities/user.entity';
+import { UserType } from 'src/users/utils/user-type';
 import { JobType } from './carts.processor';
 import { CartsService } from './carts.service';
 import { AddToCart } from './dto/add-to-cart';
 import { RemoveFromCart } from './dto/remove-from-cart';
 
-@UseGuards(RolesGuard)
 @Controller('carts')
 export class CartsController {
   private readonly maxWaitingJobs: number;
@@ -38,11 +36,14 @@ export class CartsController {
 
   @Post('add')
   @HttpCode(202)
-  async addToCart(@Body() addToCart: AddToCart, @Request() req: { user: User }) {
+  async addToCart(
+    @Body() addToCart: AddToCart,
+    @CurrentUser() user: JwtPayload,
+  ) {
     await this.ensureCartQueueCapacity();
     const job = await this.cartQueue.add('add', {
       ...addToCart,
-      user_id: req.user.id,
+      user_id: user.id,
     });
 
     return { status: 'queued', jobId: job.id };
@@ -52,12 +53,12 @@ export class CartsController {
   @HttpCode(202)
   async removeFromCart(
     @Body() removeFromCart: RemoveFromCart,
-    @Request() req: { user: User },
+    @CurrentUser() user: JwtPayload,
   ) {
     await this.ensureCartQueueCapacity();
     const job = await this.cartQueue.add('remove', {
       ...removeFromCart,
-      user_id: req.user.id,
+      user_id: user.id,
     });
 
     return { status: 'queued', jobId: job.id };
@@ -67,18 +68,18 @@ export class CartsController {
   @HttpCode(202)
   async updateCountForCartProduct(
     @Body() addToCart: AddToCart,
-    @Request() req: { user: User },
+    @CurrentUser() user: JwtPayload,
   ) {
     await this.ensureCartQueueCapacity();
     const job = await this.cartQueue.add('update', {
       ...addToCart,
-      user_id: req.user.id,
+      user_id: user.id,
     });
 
     return { status: 'queued', jobId: job.id };
   }
 
-  @Roles(['admin'])
+  @Roles(UserType.ADMIN)
   @Get('all_carts')
   findAll() {
     return this.cartsService.findAll();

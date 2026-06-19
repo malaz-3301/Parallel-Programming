@@ -1,32 +1,73 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Request } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bullmq';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+} from '@nestjs/common';
+import { Queue } from 'bullmq';
+import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
+import { JwtPayload } from 'src/auth/types/jwt-payload.type';
 import { CommentsService } from './comments.service';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { UpdateCommentDto } from './dto/update-comment.dto';
-import { User } from 'src/users/entities/user.entity';
-import { InjectQueue } from '@nestjs/bullmq';
-import { Queue } from 'bullmq';
 import { JobType } from './comments.process';
+
 @Controller('comments')
 export class CommentsController {
-  constructor(private readonly commentsService: CommentsService, @InjectQueue('comment') private commentQueue: Queue<JobType>) { }
+  constructor(
+    private readonly commentsService: CommentsService,
+    @InjectQueue('comment') private readonly commentQueue: Queue<JobType>,
+  ) {}
+
   @Post()
-  async create(@Body() createCommentDto: CreateCommentDto, @Request() req: { user: User }) {
-    await this.commentQueue.add('create', { ...createCommentDto, user_id: req.user.id });
+  async create(
+    @Body() createCommentDto: CreateCommentDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    const job = await this.commentQueue.add('create', {
+      ...createCommentDto,
+      user_id: user.id,
+    });
+    return { status: 'queued', jobId: job.id };
   }
+
   @Get()
-  findAll(@Request() req: { user: User }) {
+  findAll() {
     return this.commentsService.findAll();
   }
+
   @Get(':id')
-  findOne(@Param('id') id: string, @Request() req: { user: User }) {
-    return this.commentsService.findOne(+id, req.user.id);
+  findOne(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
+    return this.commentsService.findOne(+id, user.id);
   }
+
   @Patch(':id')
-  async update(@Param('id') id: string, @Body() updateCommentDto: UpdateCommentDto, @Request() req: { user: User }) {
-    await this.commentQueue.add('create', { ...updateCommentDto, user_id: req.user.id, id: +id });
+  async update(
+    @Param('id') id: string,
+    @Body() updateCommentDto: UpdateCommentDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    const job = await this.commentQueue.add('update', {
+      ...updateCommentDto,
+      user_id: user.id,
+      id: +id,
+    });
+    return { status: 'queued', jobId: job.id };
   }
+
   @Delete(':id')
-  async remove(@Param('id') id: string, @Request() req: { user: User }) {
-    await this.commentQueue.add('create', { id: +id, user_id: req.user.id });
+  async remove(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    const job = await this.commentQueue.add('remove', {
+      id: +id,
+      user_id: user.id,
+    });
+    return { status: 'queued', jobId: job.id };
   }
 }
