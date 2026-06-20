@@ -19,4 +19,10 @@ export class AppController {
   getInstance() {
     return this.appService.getInstance();
   }
+
+  @Public()
+  @Get('resources')
+  getResources() {
+    return this.appService.getResources();
+  }
 }
