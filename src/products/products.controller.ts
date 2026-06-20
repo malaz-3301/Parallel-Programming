@@ -5,6 +5,7 @@ import {
   Delete,
   Get,
   Param,
+  ParseIntPipe,
   Patch,
   Post,
   Query,
@@ -13,19 +14,19 @@ import { Queue } from 'bullmq';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { JwtPayload } from 'src/auth/types/jwt-payload.type';
 import { Roles } from 'src/auth/utils/roles.decorator';
+import { UserType } from 'src/enums/enums';
 import { Public } from 'src/public.module';
-import { UserType } from 'src/users/utils/user-type';
 import { CreateProductDto } from './dto/create-product.dto';
 import { FilterProductDto } from './dto/filter-product-dto';
 import { UpdateProductDto } from './dto/update-product.dto';
-import { JobType } from './products.process';
+import { ProductJob } from './products.process';
 import { ProductsService } from './products.service';
 
 @Controller('products')
 export class ProductsController {
   constructor(
     private readonly productsService: ProductsService,
-    @InjectQueue('product') private readonly productQueue: Queue<JobType>,
+    @InjectQueue('product') private readonly productQueue: Queue<ProductJob>,
   ) {}
 
   @Post()
@@ -35,7 +36,7 @@ export class ProductsController {
   ) {
     const job = await this.productQueue.add('create', {
       ...dto,
-      user_id: user.id,
+      userId: user.id,
     });
     return { status: 'queued', jobId: job.id };
   }
@@ -66,32 +67,32 @@ export class ProductsController {
 
   @Public()
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.productsService.findOne(+id);
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.productsService.findOne(id);
   }
 
   @Patch(':id')
   async update(
-    @Param('id') id: string,
+    @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateProductDto,
     @CurrentUser() user: JwtPayload,
   ) {
     const job = await this.productQueue.add('update', {
       ...dto,
-      id: +id,
-      user_id: user.id,
+      id,
+      userId: user.id,
     });
     return { status: 'queued', jobId: job.id };
   }
 
   @Delete(':id')
   async remove(
-    @Param('id') id: string,
+    @Param('id', ParseIntPipe) id: number,
     @CurrentUser() user: JwtPayload,
   ) {
     const job = await this.productQueue.add('remove', {
-      id: +id,
-      user_id: user.id,
+      id,
+      userId: user.id,
     });
     return { status: 'queued', jobId: job.id };
   }

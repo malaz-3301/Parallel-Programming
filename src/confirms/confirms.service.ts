@@ -1,20 +1,27 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
-  UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 import { Cart } from 'src/carts/entities/cart.entity';
 import { CartsService } from 'src/carts/carts.service';
+import { OrderStatus } from 'src/enums/enums';
 import { PaymentService } from 'src/payments/payment.service';
 import { ProductsService } from 'src/products/products.service';
+import { ChangeOrderStatusDto } from './dto/change-order-status.dto';
 import { CreateConfirmDto } from './dto/create-confirm.dto';
-import { UpdateConfirmDto } from './dto/update-confirm.dto';
 import { Confirm } from './entities/confirm.entity';
-import { OrderStatus } from './utils/order-status';
+
+const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
+  [OrderStatus.PENDING]: [OrderStatus.PROCESSING, OrderStatus.CANCELLED],
+  [OrderStatus.PROCESSING]: [OrderStatus.COMPLETED, OrderStatus.CANCELLED],
+  [OrderStatus.COMPLETED]: [],
+  [OrderStatus.CANCELLED]: [],
+};
 
 @Injectable()
 export class ConfirmsService {
@@ -54,12 +61,12 @@ export class ConfirmsService {
       await this.productsService.decreaseStock(stockItems, entityManager);
 
       const payment = await this.paymentService.authorize(
-        createConfirmDto.payment_token,
+        createConfirmDto.paymentToken,
         totalAmount,
       );
 
       const confirm = entityManager.create(Confirm, {
-        status: OrderStatus.COMPLETED,
+        status: OrderStatus.PENDING,
         paymentReference: payment.reference,
         totalAmount,
       });
@@ -79,6 +86,15 @@ export class ConfirmsService {
   findAll() {
     return this.confirmRepository.find({
       relations: { cart: { user: true, userProducts: { product: true } } },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  findAllForUser(userId: number) {
+    return this.confirmRepository.find({
+      where: { cart: { userId } },
+      relations: { cart: { userProducts: { product: true } } },
+      order: { createdAt: 'DESC' },
     });
   }
 
@@ -91,12 +107,12 @@ export class ConfirmsService {
 
   findOneForUser(id: number, userId: number) {
     return this.confirmRepository.findOne({
-      where: { id, cart: { user: { id: userId } } },
-      relations: { cart: { user: true } },
+      where: { id, cart: { userId } },
+      relations: { cart: { userProducts: { product: true } } },
     });
   }
 
-  update(id: number, updateConfirmDto: UpdateConfirmDto) {
+  update(id: number, statusChange: ChangeOrderStatusDto) {
     return this.dataSource.transaction(async (entityManager) => {
       const confirm = await this.findOneForUpdate(id, entityManager);
 
@@ -104,29 +120,25 @@ export class ConfirmsService {
         throw new NotFoundException();
       }
 
-      if (
-        confirm.status === OrderStatus.CANCELLED &&
-        updateConfirmDto.status !== OrderStatus.CANCELLED
-      ) {
-        throw new ConflictException('A cancelled order cannot be reopened');
+      if (statusChange.status === confirm.status) {
+        return confirm;
       }
 
-      if (
-        updateConfirmDto.status === OrderStatus.CANCELLED &&
-        confirm.status !== OrderStatus.CANCELLED &&
-        (confirm.status === OrderStatus.COMPLETED ||
-          confirm.status === OrderStatus.PROCESSING)
-      ) {
-        await this.productsService.increaseStock(
-          confirm.cart.userProducts.map((item) => ({
-            productId: item.product.id,
-            quantity: item.count,
-          })),
-          entityManager,
+      if (!ORDER_TRANSITIONS[confirm.status].includes(statusChange.status)) {
+        throw new ConflictException(
+          `Order cannot move from ${confirm.status} to ${statusChange.status}`,
         );
       }
 
-      const result = await entityManager.update(Confirm, { id }, updateConfirmDto);
+      if (statusChange.status === OrderStatus.CANCELLED) {
+        await this.restoreOrderStock(confirm, entityManager);
+      }
+
+      const result = await entityManager.update(
+        Confirm,
+        { id },
+        { status: statusChange.status },
+      );
       if (result.affected !== 1) {
         throw new ConflictException('The order was changed by another request');
       }
@@ -135,7 +147,7 @@ export class ConfirmsService {
     });
   }
 
-  remove(id: number, userId: number) {
+  cancelPendingOrder(id: number, userId: number) {
     return this.dataSource.transaction(async (entityManager) => {
       const confirm = await this.findOneForUpdate(id, entityManager);
 
@@ -144,7 +156,7 @@ export class ConfirmsService {
       }
 
       const belongsToUser = await entityManager.exists(Cart, {
-        where: { id: confirm.cart.id, user: { id: userId } },
+        where: { id: confirm.cart.id, userId },
       });
 
       if (!belongsToUser) {
@@ -152,14 +164,35 @@ export class ConfirmsService {
       }
 
       if (confirm.status !== OrderStatus.PENDING) {
-        throw new UnauthorizedException('Only pending orders can be deleted');
+        throw new ForbiddenException('Only pending orders can be cancelled');
       }
 
-      const result = await entityManager.delete(Confirm, { id });
+      await this.restoreOrderStock(confirm, entityManager);
+      const result = await entityManager.update(
+        Confirm,
+        { id, status: OrderStatus.PENDING },
+        { status: OrderStatus.CANCELLED },
+      );
+
       if (result.affected !== 1) {
         throw new ConflictException('The order was changed by another request');
       }
+
+      return entityManager.findOneByOrFail(Confirm, { id });
     });
+  }
+
+  private async restoreOrderStock(
+    confirm: Confirm,
+    entityManager: EntityManager,
+  ) {
+    await this.productsService.increaseStock(
+      confirm.cart.userProducts.map((item) => ({
+        productId: item.product.id,
+        quantity: item.count,
+      })),
+      entityManager,
+    );
   }
 
   private async findOneForUpdate(id: number, entityManager: EntityManager) {

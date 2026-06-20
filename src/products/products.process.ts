@@ -4,29 +4,31 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductsService } from './products.service';
 
-export type JobType =
-    | Job<CreateProductDto & { user_id: number }, any, 'create'>
-    | Job<UpdateProductDto & { id: number; user_id: number }, any, 'update'>
-    | Job<{ id: number; user_id: number }, any, 'remove'>;
+export type ProductJob =
+  | Job<CreateProductDto & { userId: number }, unknown, 'create'>
+  | Job<UpdateProductDto & { id: number; userId: number }, unknown, 'update'>
+  | Job<{ id: number; userId: number }, unknown, 'remove'>;
 
 @Processor('product', { concurrency: 8 })
 export class ProductConsumer extends WorkerHost {
-    constructor(private readonly productsService: ProductsService) {
-        super();
+  constructor(private readonly productsService: ProductsService) {
+    super();
+  }
+
+  process(job: ProductJob): Promise<unknown> {
+    switch (job.name) {
+      case 'create': {
+        const { userId, ...createProductDto } = job.data;
+        return this.productsService.create(createProductDto, userId);
+      }
+      case 'update': {
+        const { id, userId, ...updateProductDto } = job.data;
+        return this.productsService.update(id, updateProductDto, userId);
+      }
+      case 'remove':
+        return this.productsService.remove(job.data.id, job.data.userId);
+      default:
+        return Promise.resolve(null);
     }
-    async process(job: JobType): Promise<any> {
-        switch (job.name) {
-            case 'create':
-                return this.productsService.create(job.data, job.data.user_id);
-
-            case 'update':
-                return this.productsService.update(job.data.id, job.data, job.data.user_id);
-
-            case 'remove':
-                return this.productsService.remove(job.data.id, job.data.user_id);
-
-            default:
-                return null;
-        }
-    }
+  }
 }

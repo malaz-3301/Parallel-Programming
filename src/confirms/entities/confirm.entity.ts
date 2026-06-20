@@ -1,4 +1,5 @@
 import { Cart } from 'src/carts/entities/cart.entity';
+import { OrderStatus } from 'src/enums/enums';
 import {
   Column,
   CreateDateColumn,
@@ -6,14 +7,13 @@ import {
   OneToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { OrderStatus } from '../utils/order-status';
 
 @Entity()
 export class Confirm {
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @Column({ type: 'enum', enum: OrderStatus, default: OrderStatus.COMPLETED })
+  @Column({ type: 'enum', enum: OrderStatus, default: OrderStatus.PENDING })
   status!: OrderStatus;
 
   @Column({ unique: true })

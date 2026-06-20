@@ -1,6 +1,1 @@
-export enum  OrderStatus{
-    PENDING = 'pending',
-    PROCESSING = 'processing',
-    COMPLETED = 'completed',
-    CANCELLED = 'cancelled'
-}
+export { OrderStatus } from 'src/enums/enums';

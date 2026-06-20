@@ -1,4 +1,4 @@
-import { UserType } from 'src/users/utils/user-type';
+import { UserType } from 'src/enums/enums';
 
 export type JwtPayload = {
   id: number;

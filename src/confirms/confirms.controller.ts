@@ -5,6 +5,7 @@ import {
   Delete,
   Get,
   Param,
+  ParseIntPipe,
   Patch,
   Post,
 } from '@nestjs/common';
@@ -12,17 +13,17 @@ import { Queue } from 'bullmq';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { JwtPayload } from 'src/auth/types/jwt-payload.type';
 import { Roles } from 'src/auth/utils/roles.decorator';
-import { UserType } from 'src/users/utils/user-type';
-import { JobType } from './confirms.process';
+import { UserType } from 'src/enums/enums';
+import { ConfirmJob } from './confirms.process';
 import { ConfirmsService } from './confirms.service';
+import { ChangeOrderStatusDto } from './dto/change-order-status.dto';
 import { CreateConfirmDto } from './dto/create-confirm.dto';
-import { UpdateConfirmDto } from './dto/update-confirm.dto';
 
 @Controller('confirms')
 export class ConfirmsController {
   constructor(
     private readonly confirmsService: ConfirmsService,
-    @InjectQueue('confirm') private readonly confirmQueue: Queue<JobType>,
+    @InjectQueue('confirm') private readonly confirmQueue: Queue<ConfirmJob>,
   ) {}
 
   @Post()
@@ -33,6 +34,19 @@ export class ConfirmsController {
     return this.confirmsService.create(createConfirmDto, user.id);
   }
 
+  @Get('my')
+  findMyOrders(@CurrentUser() user: JwtPayload) {
+    return this.confirmsService.findAllForUser(user.id);
+  }
+
+  @Get('my/:id')
+  findMyOrder(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.confirmsService.findOneForUser(id, user.id);
+  }
+
   @Roles(UserType.ADMIN)
   @Get()
   findAll() {
@@ -41,32 +55,32 @@ export class ConfirmsController {
 
   @Roles(UserType.ADMIN)
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.confirmsService.findOne(+id);
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.confirmsService.findOne(id);
   }
 
   @Roles(UserType.ADMIN)
   @Patch(':id')
   async update(
-    @Param('id') id: string,
-    @Body() updateConfirmDto: UpdateConfirmDto,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() statusChange: ChangeOrderStatusDto,
   ) {
     const job = await this.confirmQueue.add('update', {
-      ...updateConfirmDto,
-      id: +id,
+      ...statusChange,
+      id,
     });
 
     return { status: 'queued', jobId: job.id };
   }
 
   @Delete(':id')
-  async remove(
-    @Param('id') id: string,
+  async cancel(
+    @Param('id', ParseIntPipe) id: number,
     @CurrentUser() user: JwtPayload,
   ) {
-    const job = await this.confirmQueue.add('remove', {
-      id: +id,
-      user_id: user.id,
+    const job = await this.confirmQueue.add('cancel', {
+      id,
+      userId: user.id,
     });
 
     return { status: 'queued', jobId: job.id };

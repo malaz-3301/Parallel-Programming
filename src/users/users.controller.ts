@@ -5,16 +5,19 @@ import {
   Delete,
   Get,
   Param,
+  ParseIntPipe,
   Patch,
   Post,
 } from '@nestjs/common';
 import { Queue } from 'bullmq';
+import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
+import { JwtPayload } from 'src/auth/types/jwt-payload.type';
 import { Roles } from 'src/auth/utils/roles.decorator';
+import { UserType } from 'src/enums/enums';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserJob } from './users.process';
 import { UsersService } from './users.service';
-import { UserType } from './utils/user-type';
 
 @Controller('users')
 export class UsersController {
@@ -38,27 +41,35 @@ export class UsersController {
 
   @Roles(UserType.ADMIN)
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.usersService.findOne(+id);
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.usersService.findOne(id);
   }
 
   @Roles(UserType.ADMIN)
   @Patch(':id')
   async update(
-    @Param('id') id: string,
+    @Param('id', ParseIntPipe) id: number,
     @Body() updateUserDto: UpdateUserDto,
+    @CurrentUser() actor: JwtPayload,
   ) {
     const job = await this.userQueue.add('update', {
       ...updateUserDto,
-      id: +id,
+      id,
+      actorId: actor.id,
     });
     return { status: 'queued', jobId: job.id };
   }
 
   @Roles(UserType.ADMIN)
   @Delete(':id')
-  async remove(@Param('id') id: string) {
-    const job = await this.userQueue.add('remove', { id: +id });
+  async remove(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() actor: JwtPayload,
+  ) {
+    const job = await this.userQueue.add('remove', {
+      id,
+      actorId: actor.id,
+    });
     return { status: 'queued', jobId: job.id };
   }
 }

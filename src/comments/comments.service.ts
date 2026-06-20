@@ -15,7 +15,7 @@ export class CommentsService {
   ) {}
 
   async create(createCommentDto: CreateCommentDto, userId: number) {
-    const { product_id: productId, ...commentData } = createCommentDto;
+    const { productId, ...commentData } = createCommentDto;
     const product = await this.productsService.findOne(productId);
 
     if (!product) {
@@ -34,12 +34,15 @@ export class CommentsService {
   }
 
   findAll() {
-    return this.commentRepository.find();
+    return this.commentRepository.find({
+      relations: { user: true, product: true },
+    });
   }
 
-  findOne(id: number, userId: number) {
+  findOne(id: number) {
     return this.commentRepository.findOne({
-      where: { id, user: { id: userId } },
+      where: { id },
+      relations: { user: true, product: true },
     });
   }
 
@@ -54,7 +57,7 @@ export class CommentsService {
     }
 
     await this.productsService.invalidateRatingCache();
-    return result;
+    return this.findOne(id);
   }
 
   async remove(id: number, userId: number) {
@@ -68,6 +71,6 @@ export class CommentsService {
     }
 
     await this.productsService.invalidateRatingCache();
-    return result;
+    return { id, deleted: true };
   }
 }

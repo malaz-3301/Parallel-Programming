@@ -1,12 +1,9 @@
-import {
-  Injectable,
-  NotFoundException,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectFlowProducer } from '@nestjs/bullmq';
 import { InjectRepository } from '@nestjs/typeorm';
 import { FlowChildJob, FlowProducer } from 'bullmq';
 import { IsNull, Repository } from 'typeorm';
+import { UserType } from 'src/enums/enums';
 import { UsersService } from 'src/users/users.service';
 import { CreateNotificationAllUsersDto } from './dto/create-notification-all-users.dto';
 import { CreateNotificationDto } from './dto/create-notification.dto';
@@ -25,10 +22,10 @@ export class NotificationsService {
     private readonly notificationFlowProducer: FlowProducer,
   ) {}
 
-  create(createNotificationDto: CreateNotificationDto) {
+  create(createNotificationDto: CreateNotificationDto, userId: number) {
     const notification = this.notificationRepository.create({
       ...createNotificationDto,
-      user: { id: createNotificationDto.userId },
+      userId,
     });
 
     return this.notificationRepository.save(notification);
@@ -78,27 +75,33 @@ export class NotificationsService {
   }
 
   findAllForUser(userId: number) {
-    return this.notificationRepository.find({ where: { user: { id: userId } } });
+    return this.notificationRepository.find({
+      where: { userId },
+      order: { createdAt: 'DESC' },
+    });
   }
 
   findOneForAdmin(id: number) {
     return this.notificationRepository.findOne({ where: { id } });
   }
 
-  async findOne(id: number, userId: number) {
+  async findOne(id: number, userId: number, userType: UserType) {
+    const isAdmin =
+      userType === UserType.ADMIN || userType === UserType.SUPERADMIN;
     const notification = await this.notificationRepository.findOne({
-      where: { user: { id: userId }, id },
+      where: isAdmin ? { id } : { id, userId },
     });
 
     if (!notification) {
       throw new NotFoundException();
     }
 
-    if (!notification.readAt) {
+    if (!isAdmin && !notification.readAt) {
       await this.notificationRepository.update(
         { id: notification.id, readAt: IsNull() },
         { readAt: new Date() },
       );
+      notification.readAt = new Date();
     }
 
     return notification;
@@ -111,18 +114,29 @@ export class NotificationsService {
       throw new NotFoundException();
     }
 
-    if (notification.readAt) {
-      throw new UnauthorizedException('A read notification cannot be edited');
+    const result = await this.notificationRepository.update(
+      id,
+      updateNotificationDto,
+    );
+
+    if (result.affected !== 1) {
+      throw new NotFoundException();
     }
 
-    return this.notificationRepository.update(id, updateNotificationDto);
+    return this.findOneForAdmin(id);
   }
 
-  removeForUser(id: number, userId: number) {
-    return this.notificationRepository.delete({ id, user: { id: userId } });
-  }
+  async remove(id: number, userId: number, userType: UserType) {
+    const isAdmin =
+      userType === UserType.ADMIN || userType === UserType.SUPERADMIN;
+    const result = await this.notificationRepository.delete(
+      isAdmin ? { id } : { id, userId },
+    );
 
-  remove(id: number) {
-    return this.notificationRepository.delete(id);
+    if (result.affected !== 1) {
+      throw new NotFoundException();
+    }
+
+    return { id, deleted: true };
   }
 }

@@ -6,9 +6,9 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { UserType } from 'src/enums/enums';
 import { JwtPayload } from '../types/jwt-payload.type';
 import { ROLES_KEY } from './roles.decorator';
-import { UserType } from 'src/users/utils/user-type';
 
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -35,7 +35,9 @@ export class RolesGuard implements CanActivate {
       user.userType !== UserType.SUPERADMIN &&
       !requiredRoles.includes(user.userType)
     ) {
-      throw new ForbiddenException('You do not have permission to access this resource');
+      throw new ForbiddenException(
+        'You do not have permission to access this resource',
+      );
     }
 
     return true;

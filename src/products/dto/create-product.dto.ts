@@ -1,17 +1,25 @@
-import { IsInt, IsNumber, IsPositive, IsString, IsUrl, MaxLength, } from 'class-validator'
-import { title } from 'process';
-import { Company } from 'src/companies/entities/company.entity';
+import {
+  IsInt,
+  IsNumber,
+  IsPositive,
+  IsString,
+  MaxLength,
+} from 'class-validator';
+
 export class CreateProductDto {
-    @IsInt()
-    @IsPositive()
-    count!: number;
-    @IsNumber()
-    @IsPositive()
-    price!: number;
-    @IsString()
-    @MaxLength(100)
-    photo!: string
-    @IsString()
-    @MaxLength(1000)
-    details!: string
+  @IsInt()
+  @IsPositive()
+  count!: number;
+
+  @IsNumber()
+  @IsPositive()
+  price!: number;
+
+  @IsString()
+  @MaxLength(100)
+  photo!: string;
+
+  @IsString()
+  @MaxLength(1000)
+  details!: string;
 }

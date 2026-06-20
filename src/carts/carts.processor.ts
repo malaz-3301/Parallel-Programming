@@ -1,13 +1,17 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import { CartsService } from './carts.service';
-import { AddToCart } from './dto/add-to-cart';
-import { RemoveFromCart } from './dto/remove-from-cart';
+
+type CartItemJobData = {
+  productId: number;
+  count: number;
+  userId: number;
+};
 
 export type CartJob =
-  | Job<AddToCart & { user_id: number }, unknown, 'add'>
-  | Job<RemoveFromCart & { user_id: number }, unknown, 'remove'>
-  | Job<AddToCart & { user_id: number }, unknown, 'update'>;
+  | Job<CartItemJobData, unknown, 'add'>
+  | Job<{ productId: number; userId: number }, unknown, 'remove'>
+  | Job<CartItemJobData, unknown, 'update'>;
 
 @Processor('cart', { concurrency: 8 })
 export class CartConsumer extends WorkerHost {
@@ -18,13 +22,21 @@ export class CartConsumer extends WorkerHost {
   process(job: CartJob): Promise<unknown> {
     switch (job.name) {
       case 'add':
-        return this.cartsService.addToCart(job.data, job.data.user_id);
+        return this.cartsService.addToCart(
+          job.data.productId,
+          job.data.count,
+          job.data.userId,
+        );
       case 'remove':
-        return this.cartsService.removeFromCart(job.data, job.data.user_id);
+        return this.cartsService.removeFromCart(
+          job.data.productId,
+          job.data.userId,
+        );
       case 'update':
         return this.cartsService.updateCountForCartProduct(
-          job.data,
-          job.data.user_id,
+          job.data.productId,
+          job.data.count,
+          job.data.userId,
         );
       default:
         return Promise.resolve(null);

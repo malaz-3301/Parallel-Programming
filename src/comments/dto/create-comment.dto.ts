@@ -1,16 +1,9 @@
-import {
-  IsInt,
-  IsPositive,
-  IsString,
-  Max,
-  MaxLength,
-  Min,
-} from 'class-validator';
+import { IsInt, IsPositive, IsString, Max, MaxLength, Min } from 'class-validator';
 
 export class CreateCommentDto {
   @IsInt()
   @IsPositive()
-  product_id!: number;
+  productId!: number;
 
   @IsString()
   @MaxLength(1000)

@@ -6,8 +6,6 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, IsNull, Repository } from 'typeorm';
 import { UserProductsService } from 'src/user-products/user-products.service';
-import { AddToCart } from './dto/add-to-cart';
-import { RemoveFromCart } from './dto/remove-from-cart';
 import { Cart } from './entities/cart.entity';
 
 @Injectable()
@@ -107,11 +105,11 @@ export class CartsService {
     });
   }
 
-  async addToCart(addToCart: AddToCart, userId: number) {
+  async addToCart(productId: number, count: number, userId: number) {
     return this.dataSource.transaction(async (entityManager) => {
       const cart = await this.getOrCreateOpenCart(userId, entityManager);
       const userProduct = await this.userProductsService.addToCart(
-        { ...addToCart, cartId: cart.id },
+        { productId, count, cartId: cart.id },
         entityManager,
       );
 
@@ -122,7 +120,11 @@ export class CartsService {
     });
   }
 
-  async updateCountForCartProduct(updateCart: AddToCart, userId: number) {
+  async updateCountForCartProduct(
+    productId: number,
+    count: number,
+    userId: number,
+  ) {
     return this.dataSource.transaction(async (entityManager) => {
       const cart = await this.findOpenCartForUpdate(userId, entityManager);
 
@@ -131,7 +133,7 @@ export class CartsService {
       }
 
       const existingItem = cart.userProducts.find(
-        (item) => item.productId === updateCart.productId,
+        (item) => item.productId === productId,
       );
 
       if (!existingItem) {
@@ -140,7 +142,7 @@ export class CartsService {
 
       const updatedItem =
         await this.userProductsService.updateCountForCartProduct(
-          { ...updateCart, cartId: cart.id },
+          { productId, count, cartId: cart.id },
           entityManager,
         );
 
@@ -154,7 +156,7 @@ export class CartsService {
     });
   }
 
-  async removeFromCart(removeFromCart: RemoveFromCart, userId: number) {
+  async removeFromCart(productId: number, userId: number) {
     return this.dataSource.transaction(async (entityManager) => {
       const cart = await this.findOpenCartForUpdate(userId, entityManager);
 
@@ -163,7 +165,7 @@ export class CartsService {
       }
 
       const removedItem = await this.userProductsService.remove(
-        removeFromCart.productId,
+        productId,
         cart.id,
         entityManager,
       );

@@ -1,39 +1,90 @@
-import { Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { DataSource, IsNull, Not, Repository } from 'typeorm';
+import { UserType } from 'src/enums/enums';
+import { User } from 'src/users/entities/user.entity';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 import { Company } from './entities/company.entity';
-import { InjectRepository } from '@nestjs/typeorm';
-import { IsNull, Not, Repository } from 'typeorm';
 
 @Injectable()
 export class CompaniesService {
-  constructor(@InjectRepository(Company) private companyRepository: Repository<Company>,) { }
-  create(createCompanyDto: CreateCompanyDto, user_id: number) {
-    console.log("dkfjklajl")
-    const company = this.companyRepository.create({ ...createCompanyDto, user: { id: user_id } });
-    return this.companyRepository.save(company)
+  constructor(
+    @InjectRepository(Company)
+    private readonly companyRepository: Repository<Company>,
+    private readonly dataSource: DataSource,
+  ) {}
+
+  async create(createCompanyDto: CreateCompanyDto) {
+    const { userId, ...companyData } = createCompanyDto;
+    const user = await this.dataSource.getRepository(User).findOne({
+      where: { id: userId, userType: Not(UserType.BANNED) },
+    });
+
+    if (!user) {
+      throw new NotFoundException('Company owner was not found');
+    }
+
+    if (await this.findOneByUser(userId)) {
+      throw new ConflictException('The user already owns a company');
+    }
+
+    const company = this.companyRepository.create({
+      ...companyData,
+      userId,
+    });
+    return this.companyRepository.save(company);
   }
 
   findAll() {
-    return this.companyRepository.find({ where: { user: { id: Not(IsNull()) } } });
+    return this.companyRepository.find({
+      where: { userId: Not(IsNull()) },
+    });
   }
 
   findOne(id: number) {
-    return this.companyRepository.findOne({ where: { id, user: { id: Not(IsNull()) } } })
-  }
-  findOneByUser(user_id: number, ) {
-    const where = { where: { user: { id: user_id } } }
-    return this.companyRepository.findOne(where)
+    return this.companyRepository.findOne({
+      where: { id, userId: Not(IsNull()) },
+    });
   }
 
-  update(id: number, updateCompanyDto: UpdateCompanyDto) {
-    return this.companyRepository.update(id, updateCompanyDto);
-  }
-  updateForUser(id: number, updateCompanyDto: UpdateCompanyDto, user_id: number) {
-    return this.companyRepository.update({ id, user: { id: user_id } }, updateCompanyDto,);
+  findOneByUser(userId: number) {
+    return this.companyRepository.findOne({ where: { userId } });
   }
 
-  remove(id: number) {
-    return this.companyRepository.update(id, { user: { id: undefined } })
+  async update(
+    id: number,
+    updateCompanyDto: UpdateCompanyDto,
+    actorId: number,
+    actorType: UserType,
+  ) {
+    const where =
+      actorType === UserType.ADMIN || actorType === UserType.SUPERADMIN
+        ? { id }
+        : { id, userId: actorId };
+    const result = await this.companyRepository.update(where, updateCompanyDto);
+
+    if (result.affected !== 1) {
+      throw new NotFoundException();
+    }
+
+    return this.findOne(id);
+  }
+
+  async remove(id: number) {
+    const result = await this.companyRepository.update(
+      { id, userId: Not(IsNull()) },
+      { userId: null },
+    );
+
+    if (result.affected !== 1) {
+      throw new NotFoundException();
+    }
+
+    return { id, detached: true };
   }
 }

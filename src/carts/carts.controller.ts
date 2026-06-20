@@ -2,10 +2,13 @@ import { InjectQueue } from '@nestjs/bullmq';
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpException,
   HttpStatus,
+  Param,
+  ParseIntPipe,
   Patch,
   Post,
 } from '@nestjs/common';
@@ -14,11 +17,10 @@ import { Queue } from 'bullmq';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { JwtPayload } from 'src/auth/types/jwt-payload.type';
 import { Roles } from 'src/auth/utils/roles.decorator';
-import { UserType } from 'src/users/utils/user-type';
+import { UserType } from 'src/enums/enums';
 import { CartJob } from './carts.processor';
 import { CartsService } from './carts.service';
-import { AddToCart } from './dto/add-to-cart';
-import { RemoveFromCart } from './dto/remove-from-cart';
+import { CartItemQuantityDto } from './dto/cart-item-quantity.dto';
 
 @Controller('carts')
 export class CartsController {
@@ -34,53 +36,62 @@ export class CartsController {
     );
   }
 
-  @Post('add')
+  @Get()
+  findMyCart(@CurrentUser() user: JwtPayload) {
+    return this.cartsService.findOne(user.id);
+  }
+
+  @Post('items/:productId')
   @HttpCode(202)
   async addToCart(
-    @Body() addToCart: AddToCart,
+    @Param('productId', ParseIntPipe) productId: number,
+    @Body() input: CartItemQuantityDto,
     @CurrentUser() user: JwtPayload,
   ) {
     await this.ensureCartQueueCapacity();
     const job = await this.cartQueue.add('add', {
-      ...addToCart,
-      user_id: user.id,
+      productId,
+      count: input.count,
+      userId: user.id,
     });
 
     return { status: 'queued', jobId: job.id };
   }
 
-  @Post('remove')
-  @HttpCode(202)
-  async removeFromCart(
-    @Body() removeFromCart: RemoveFromCart,
-    @CurrentUser() user: JwtPayload,
-  ) {
-    await this.ensureCartQueueCapacity();
-    const job = await this.cartQueue.add('remove', {
-      ...removeFromCart,
-      user_id: user.id,
-    });
-
-    return { status: 'queued', jobId: job.id };
-  }
-
-  @Patch('update')
+  @Patch('items/:productId')
   @HttpCode(202)
   async updateCountForCartProduct(
-    @Body() addToCart: AddToCart,
+    @Param('productId', ParseIntPipe) productId: number,
+    @Body() input: CartItemQuantityDto,
     @CurrentUser() user: JwtPayload,
   ) {
     await this.ensureCartQueueCapacity();
     const job = await this.cartQueue.add('update', {
-      ...addToCart,
-      user_id: user.id,
+      productId,
+      count: input.count,
+      userId: user.id,
+    });
+
+    return { status: 'queued', jobId: job.id };
+  }
+
+  @Delete('items/:productId')
+  @HttpCode(202)
+  async removeFromCart(
+    @Param('productId', ParseIntPipe) productId: number,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    await this.ensureCartQueueCapacity();
+    const job = await this.cartQueue.add('remove', {
+      productId,
+      userId: user.id,
     });
 
     return { status: 'queued', jobId: job.id };
   }
 
   @Roles(UserType.ADMIN)
-  @Get('all_carts')
+  @Get('all')
   findAll() {
     return this.cartsService.findAll();
   }

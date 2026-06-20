@@ -1,12 +1,16 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Not, Repository } from 'typeorm';
 import { encodePassword } from 'src/auth/utils/bcrypt';
 import { CartsService } from 'src/carts/carts.service';
+import { UserType } from 'src/enums/enums';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './entities/user.entity';
-import { UserType } from './utils/user-type';
 
 @Injectable()
 export class UsersService {
@@ -37,7 +41,11 @@ export class UsersService {
   }
 
   findOneByPhone(phone: string) {
-    return this.userRepository.findOne({ where: { phone } });
+    return this.userRepository
+      .createQueryBuilder('user')
+      .addSelect('user.password')
+      .where('user.phone = :phone', { phone })
+      .getOne();
   }
 
   findOneById(userId: number) {
@@ -52,27 +60,64 @@ export class UsersService {
     });
   }
 
-  async update(id: number, updateUserDto: UpdateUserDto) {
-    const result = await this.userRepository.update(id, updateUserDto);
+  async update(id: number, updateUserDto: UpdateUserDto, actorId: number) {
+    const target = await this.getManageableUser(id, actorId);
+    const changes = {
+      ...updateUserDto,
+      ...(updateUserDto.password
+        ? { password: encodePassword(updateUserDto.password) }
+        : {}),
+    };
 
+    const result = await this.userRepository.update(target.id, changes);
     if (result.affected !== 1) {
       throw new NotFoundException();
     }
 
-    return result;
+    return this.findOneById(target.id);
   }
 
-  async remove(id: number) {
-    const user = await this.findOneById(id);
-    if (!user) {
+  async remove(id: number, actorId: number) {
+    const target = await this.getManageableUser(id, actorId);
+    const activeCart = await this.cartsService.findOne(target.id);
+
+    if (activeCart) {
+      await this.cartsService.remove(target.id);
+    }
+
+    await this.userRepository.update(target.id, {
+      userType: UserType.BANNED,
+    });
+
+    return { id: target.id, userType: UserType.BANNED };
+  }
+
+  private async getManageableUser(targetId: number, actorId: number) {
+    const [target, actor] = await Promise.all([
+      this.findOneById(targetId),
+      this.findOneById(actorId),
+    ]);
+
+    if (!target || !actor) {
       throw new NotFoundException();
     }
 
-    const activeCart = await this.cartsService.findOne(id);
-    if (activeCart) {
-      await this.cartsService.remove(id);
+    if (target.id === actor.id) {
+      throw new ForbiddenException('You cannot manage your own account here');
     }
 
-    return this.userRepository.update(id, { userType: UserType.BANNED });
+    if (target.userType === UserType.SUPERADMIN) {
+      throw new ForbiddenException('A super admin account cannot be managed');
+    }
+
+    if (
+      actor.userType === UserType.ADMIN &&
+      target.userType !== UserType.USER &&
+      target.userType !== UserType.BANNED
+    ) {
+      throw new ForbiddenException('Admins can manage regular users only');
+    }
+
+    return target;
   }
 }

@@ -1,13 +1,11 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import { CreateFavoriteDto } from './dto/create-favorite.dto';
-import { UpdateFavoriteDto } from './dto/update-favorite.dto';
 import { FavoritesService } from './favorites.service';
 
 export type FavoriteJob =
-  | Job<CreateFavoriteDto & { user_id: number }, unknown, 'create'>
-  | Job<UpdateFavoriteDto & { id: number; user_id: number }, unknown, 'update'>
-  | Job<{ id: number; user_id: number }, unknown, 'remove'>;
+  | Job<CreateFavoriteDto & { userId: number }, unknown, 'create'>
+  | Job<{ id: number; userId: number }, unknown, 'remove'>;
 
 @Processor('favorite', { concurrency: 4 })
 export class FavoriteConsumer extends WorkerHost {
@@ -18,15 +16,9 @@ export class FavoriteConsumer extends WorkerHost {
   process(job: FavoriteJob): Promise<unknown> {
     switch (job.name) {
       case 'create':
-        return this.favoritesService.create(job.data, job.data.user_id);
-      case 'update':
-        return this.favoritesService.update(
-          job.data.id,
-          job.data,
-          job.data.user_id,
-        );
+        return this.favoritesService.create(job.data, job.data.userId);
       case 'remove':
-        return this.favoritesService.remove(job.data.id, job.data.user_id);
+        return this.favoritesService.remove(job.data.id, job.data.userId);
       default:
         return Promise.resolve(null);
     }

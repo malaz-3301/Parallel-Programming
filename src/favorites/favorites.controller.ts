@@ -5,6 +5,7 @@ import {
   Delete,
   Get,
   Param,
+  ParseIntPipe,
   Post,
 } from '@nestjs/common';
 import { Queue } from 'bullmq';
@@ -28,29 +29,32 @@ export class FavoritesController {
   ) {
     const job = await this.favoriteQueue.add('create', {
       ...createFavoriteDto,
-      user_id: user.id,
+      userId: user.id,
     });
     return { status: 'queued', jobId: job.id };
   }
 
   @Get()
-  findAll() {
-    return this.favoritesService.findAll();
+  findAll(@CurrentUser() user: JwtPayload) {
+    return this.favoritesService.findAll(user.id);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
-    return this.favoritesService.findOne(+id, user.id);
+  findOne(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.favoritesService.findOne(id, user.id);
   }
 
   @Delete(':id')
   async remove(
-    @Param('id') id: string,
+    @Param('id', ParseIntPipe) id: number,
     @CurrentUser() user: JwtPayload,
   ) {
     const job = await this.favoriteQueue.add('remove', {
-      id: +id,
-      user_id: user.id,
+      id,
+      userId: user.id,
     });
     return { status: 'queued', jobId: job.id };
   }

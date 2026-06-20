@@ -1,5 +1,6 @@
 import { Body, Controller, Post, Request, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import { UserType } from 'src/enums/enums';
 import { Public } from 'src/public.module';
 import { RegisterDto } from '../../dto/register.dto';
 import { AuthService } from '../../services/auth/auth.service';
@@ -14,7 +15,7 @@ export class AuthController {
   login(
     @Request()
     request: {
-      user: { id: number; phone: string; userType: import('src/users/utils/user-type').UserType };
+      user: { id: number; phone: string; userType: UserType };
     },
   ) {
     return this.authService.login(request.user);

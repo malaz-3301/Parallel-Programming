@@ -5,6 +5,7 @@ import {
   Delete,
   Get,
   Param,
+  ParseIntPipe,
   Patch,
   Post,
 } from '@nestjs/common';
@@ -30,7 +31,7 @@ export class CommentsController {
   ) {
     const job = await this.commentQueue.add('create', {
       ...createCommentDto,
-      user_id: user.id,
+      userId: user.id,
     });
     return { status: 'queued', jobId: job.id };
   }
@@ -41,32 +42,32 @@ export class CommentsController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
-    return this.commentsService.findOne(+id, user.id);
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.commentsService.findOne(id);
   }
 
   @Patch(':id')
   async update(
-    @Param('id') id: string,
+    @Param('id', ParseIntPipe) id: number,
     @Body() updateCommentDto: UpdateCommentDto,
     @CurrentUser() user: JwtPayload,
   ) {
     const job = await this.commentQueue.add('update', {
       ...updateCommentDto,
-      user_id: user.id,
-      id: +id,
+      userId: user.id,
+      id,
     });
     return { status: 'queued', jobId: job.id };
   }
 
   @Delete(':id')
   async remove(
-    @Param('id') id: string,
+    @Param('id', ParseIntPipe) id: number,
     @CurrentUser() user: JwtPayload,
   ) {
     const job = await this.commentQueue.add('remove', {
-      id: +id,
-      user_id: user.id,
+      id,
+      userId: user.id,
     });
     return { status: 'queued', jobId: job.id };
   }

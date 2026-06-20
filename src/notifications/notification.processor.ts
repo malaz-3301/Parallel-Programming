@@ -1,13 +1,18 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
+import { UserType } from 'src/enums/enums';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { UpdateNotificationDto } from './dto/update-notification.dto';
 import { NotificationsService } from './notifications.service';
 
 type NotificationJob =
-  | Job<CreateNotificationDto, unknown, 'create'>
+  | Job<CreateNotificationDto & { userId: number }, unknown, 'create'>
   | Job<UpdateNotificationDto & { id: number }, unknown, 'update'>
-  | Job<{ id: number }, unknown, 'remove'>
+  | Job<
+      { id: number; actorId: number; actorType: UserType },
+      unknown,
+      'remove'
+    >
   | Job<{ recipients: number }, unknown, 'sendNotifications'>;
 
 type NotificationBatchJob = Job<
@@ -25,11 +30,20 @@ export class NotificationConsumer extends WorkerHost {
   async process(job: NotificationJob): Promise<unknown> {
     switch (job.name) {
       case 'create':
-        return this.notificationsService.create(job.data);
+        return this.notificationsService.create(
+          { data: job.data.data },
+          job.data.userId,
+        );
       case 'update':
-        return this.notificationsService.update(job.data.id, job.data);
+        return this.notificationsService.update(job.data.id, {
+          data: job.data.data,
+        });
       case 'remove':
-        return this.notificationsService.remove(job.data.id);
+        return this.notificationsService.remove(
+          job.data.id,
+          job.data.actorId,
+          job.data.actorType,
+        );
       case 'sendNotifications':
         return { processed: true, recipients: job.data.recipients };
       default:
@@ -50,10 +64,10 @@ export class StepsConsumer extends WorkerHost {
     }
 
     for (const userId of job.data.userIds) {
-      await this.notificationsService.create({
+      await this.notificationsService.create(
+        { data: job.data.data },
         userId,
-        data: job.data.data,
-      });
+      );
     }
 
     return {
