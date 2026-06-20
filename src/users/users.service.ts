@@ -1,10 +1,11 @@
 import {
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Not, Repository } from 'typeorm';
+import { Not, QueryFailedError, Repository } from 'typeorm';
 import { encodePassword } from 'src/auth/utils/bcrypt';
 import { CartsService } from 'src/carts/carts.service';
 import { UserType } from 'src/enums/enums';
@@ -20,9 +21,21 @@ export class UsersService {
     private readonly cartsService: CartsService,
   ) {}
 
-  create(createUserDto: CreateUserDto) {
+  async create(createUserDto: CreateUserDto) {
     const user = this.userRepository.create(createUserDto);
-    return this.userRepository.save(user);
+
+    try {
+      return await this.userRepository.save(user);
+    } catch (error) {
+      if (
+        error instanceof QueryFailedError &&
+        (error.driverError as { code?: string } | undefined)?.code === '23505'
+      ) {
+        throw new ConflictException('Phone number is already registered');
+      }
+
+      throw error;
+    }
   }
 
   createUser(createUserDto: CreateUserDto) {
