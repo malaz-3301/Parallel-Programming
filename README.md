@@ -27,6 +27,7 @@ Useful endpoints:
 ```text
 GET /health
 GET /instance
+GET /resources
 GET /products/best-sellers
 ```
 
@@ -56,7 +57,8 @@ PERFORMANCE_WARN_MS=500
 Architecture and AOP details:
 
 ```text
-docs/architecture-and-aop.md
+docs/architecture.txt
+docs/aop.txt
 ```
 
 ## Benchmarking
