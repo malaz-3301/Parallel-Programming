@@ -19,7 +19,7 @@ export class UserProduct {
   @Column({ type: 'integer' })
   productId!: number;
 
-  @ManyToOne(() => Product, { nullable: false })
+  @ManyToOne(() => Product, { nullable: false, onDelete: 'RESTRICT' })
   @JoinColumn({ name: 'productId' })
   product!: Product;
 
