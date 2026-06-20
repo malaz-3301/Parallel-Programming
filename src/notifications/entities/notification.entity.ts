@@ -19,7 +19,7 @@ export class Notification {
   @Column()
   data!: string;
 
-  @Column({ nullable: true })
+  @Column({ type: 'timestamp', nullable: true })
   readAt!: Date | null;
 
   @Column({ type: 'integer' })
