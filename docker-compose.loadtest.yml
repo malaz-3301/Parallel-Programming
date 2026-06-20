@@ -1,0 +1,18 @@
+services:
+  api1:
+    environment:
+      THROTTLE_LIMIT: "1000000"
+      PERFORMANCE_LOG_ALL: "false"
+      PERFORMANCE_WARN_MS: "500"
+
+  api2:
+    environment:
+      THROTTLE_LIMIT: "1000000"
+      PERFORMANCE_LOG_ALL: "false"
+      PERFORMANCE_WARN_MS: "500"
+
+  api3:
+    environment:
+      THROTTLE_LIMIT: "1000000"
+      PERFORMANCE_LOG_ALL: "false"
+      PERFORMANCE_WARN_MS: "500"

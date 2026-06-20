@@ -1,0 +1,28 @@
+{
+  "generatedAt": "2026-06-20T03:32:20.742Z",
+  "scenario": "Best sellers database aggregation versus warm Redis cache",
+  "url": "http://localhost:8080/products/best-sellers",
+  "iterations": 50,
+  "cacheKey": "parallel-ecommerce:products:best-sellers",
+  "before": {
+    "name": "before",
+    "requests": 50,
+    "averageMs": 21.74,
+    "p50Ms": 20.8,
+    "p95Ms": 30.75,
+    "minMs": 19.45,
+    "maxMs": 31.45,
+    "throughputPerSecond": 46
+  },
+  "after": {
+    "name": "after",
+    "requests": 50,
+    "averageMs": 1.82,
+    "p50Ms": 1.8,
+    "p95Ms": 2.44,
+    "minMs": 1.32,
+    "maxMs": 2.65,
+    "throughputPerSecond": 549.6
+  },
+  "improvementPercent": 91.63
+}

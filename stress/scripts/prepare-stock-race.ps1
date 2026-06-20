@@ -99,12 +99,14 @@ race_carts AS (
   INSERT INTO cart (
     "userId",
     price,
-    "confirmId"
+    "confirmId",
+    version
   )
   SELECT
     id,
     10.00,
-    NULL
+    NULL,
+    1
   FROM race_users
   RETURNING id
 )
@@ -112,13 +114,15 @@ INSERT INTO user_product (
   "productId",
   "cartId",
   count,
-  price
+  price,
+  version
 )
 SELECT
   p.id,
   c.id,
   1,
-  10.00
+  10.00,
+  1
 FROM race_product p
 CROSS JOIN race_carts c;
 
