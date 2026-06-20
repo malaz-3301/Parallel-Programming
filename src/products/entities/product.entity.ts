@@ -37,6 +37,6 @@ export class Product {
   @OneToMany(() => UserProduct, (userProduct) => userProduct.product)
   userProducts!: UserProduct[];
 
-  @Column({ nullable: true })
+  @Column({ type: 'timestamp', nullable: true })
   deletedAt!: Date | null;
 }
