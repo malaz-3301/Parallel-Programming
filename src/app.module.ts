@@ -16,6 +16,7 @@ import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
+    // هنا توجد حدود الموارد لكل نسخة
     ModulesSetModule,
     AuthModule,
     UserProductsModule,

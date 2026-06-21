@@ -422,13 +422,13 @@ export class ProductsService {
 
   private productTtlSeconds() {
     return Number(
-      this.configService.get<string>('CACHE_PRODUCT_TTL') ?? 600,
+      this.configService.get<string>('CACHE_PRODUCT_TTL') ?? 100000,
     );
   }
 
   private catalogTtlSeconds() {
     return Number(
-      this.configService.get<string>('CACHE_CATALOG_TTL') ?? 300,
+      this.configService.get<string>('CACHE_CATALOG_TTL') ?? 10000000,
     );
   }
 }
